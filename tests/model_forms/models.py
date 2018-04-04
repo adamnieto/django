@@ -1,3 +1,13 @@
+"""
+XX. Generating HTML forms from models
+
+This is mostly just a reworking of the ``form_for_model``/``form_for_instance``
+tests to use ``ModelForm``. As such, the text may not make sense in all cases,
+and the examples are probably a poor fit for the ``ModelForm`` syntax. In other
+words, most of these tests should be rewritten.
+"""
+from __future__ import unicode_literals
+
 import datetime
 import os
 import tempfile
@@ -7,6 +17,10 @@ from django.core import validators
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
 from django.db import models
+from django.utils import six
+from django.utils._os import upath
+from django.utils.encoding import python_2_unicode_compatible
+from django.utils.six.moves import range
 
 temp_storage_dir = tempfile.mkdtemp()
 temp_storage = FileSystemStorage(temp_storage_dir)
@@ -28,6 +42,7 @@ class Person(models.Model):
     name = models.CharField(max_length=100)
 
 
+@python_2_unicode_compatible
 class Category(models.Model):
     name = models.CharField(max_length=20)
     slug = models.SlugField(max_length=20)
@@ -40,6 +55,7 @@ class Category(models.Model):
         return self.__str__()
 
 
+@python_2_unicode_compatible
 class Writer(models.Model):
     name = models.CharField(max_length=50, help_text='Use both first and last names.')
 
@@ -50,6 +66,7 @@ class Writer(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Article(models.Model):
     headline = models.CharField(max_length=50)
     slug = models.SlugField()
@@ -63,7 +80,7 @@ class Article(models.Model):
     def save(self, *args, **kwargs):
         if not self.id:
             self.created = datetime.date.today()
-        return super().save(*args, **kwargs)
+        return super(Article, self).save(*args, **kwargs)
 
     def __str__(self):
         return self.headline
@@ -81,6 +98,7 @@ class BetterWriter(Writer):
     score = models.IntegerField()
 
 
+@python_2_unicode_compatible
 class Publication(models.Model):
     title = models.CharField(max_length=30)
     date_published = models.DateField()
@@ -119,6 +137,7 @@ class Author1(models.Model):
     full_name = models.CharField(max_length=255)
 
 
+@python_2_unicode_compatible
 class WriterProfile(models.Model):
     writer = models.OneToOneField(Writer, models.CASCADE, primary_key=True)
     age = models.PositiveIntegerField()
@@ -131,6 +150,7 @@ class Document(models.Model):
     myfile = models.FileField(upload_to='unused', blank=True)
 
 
+@python_2_unicode_compatible
 class TextFile(models.Model):
     description = models.CharField(max_length=20)
     file = models.FileField(storage=temp_storage, upload_to='tests', max_length=15)
@@ -151,7 +171,7 @@ class CustomFF(models.Model):
 
 
 class FilePathModel(models.Model):
-    path = models.FilePathField(path=os.path.dirname(__file__), match='models.py', blank=True)
+    path = models.FilePathField(path=os.path.dirname(upath(__file__)), match=r".*\.py$", blank=True)
 
 
 try:
@@ -159,6 +179,7 @@ try:
 
     test_images = True
 
+    @python_2_unicode_compatible
     class ImageFile(models.Model):
         def custom_upload_path(self, filename):
             path = self.path or 'tests'
@@ -177,6 +198,7 @@ try:
         def __str__(self):
             return self.description
 
+    @python_2_unicode_compatible
     class OptionalImageFile(models.Model):
         def custom_upload_path(self, filename):
             path = self.path or 'tests'
@@ -207,10 +229,19 @@ except ImportError:
     test_images = False
 
 
+@python_2_unicode_compatible
+class CommaSeparatedInteger(models.Model):
+    field = models.CommaSeparatedIntegerField(max_length=20)
+
+    def __str__(self):
+        return self.field
+
+
 class Homepage(models.Model):
     url = models.URLField()
 
 
+@python_2_unicode_compatible
 class Product(models.Model):
     slug = models.SlugField(unique=True)
 
@@ -218,6 +249,7 @@ class Product(models.Model):
         return self.slug
 
 
+@python_2_unicode_compatible
 class Price(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField()
@@ -242,6 +274,7 @@ class ArticleStatus(models.Model):
     status = models.CharField(max_length=2, choices=ARTICLE_STATUS_CHAR, blank=True, null=True)
 
 
+@python_2_unicode_compatible
 class Inventory(models.Model):
     barcode = models.PositiveIntegerField(unique=True)
     parent = models.ForeignKey('self', models.SET_NULL, to_field='barcode', blank=True, null=True)
@@ -280,6 +313,7 @@ class DerivedBook(Book, BookXtra):
     pass
 
 
+@python_2_unicode_compatible
 class ExplicitPK(models.Model):
     key = models.CharField(max_length=20, primary_key=True)
     desc = models.CharField(max_length=20, blank=True, unique=True)
@@ -291,6 +325,7 @@ class ExplicitPK(models.Model):
         return self.key
 
 
+@python_2_unicode_compatible
 class Post(models.Model):
     title = models.CharField(max_length=50, unique_for_date='posted', blank=True)
     slug = models.CharField(max_length=50, unique_for_year='posted', blank=True)
@@ -301,6 +336,7 @@ class Post(models.Model):
         return self.title
 
 
+@python_2_unicode_compatible
 class DateTimePost(models.Model):
     title = models.CharField(max_length=50, unique_for_date='posted', blank=True)
     slug = models.CharField(max_length=50, unique_for_year='posted', blank=True)
@@ -315,17 +351,18 @@ class DerivedPost(Post):
     pass
 
 
+@python_2_unicode_compatible
 class BigInt(models.Model):
     biggie = models.BigIntegerField()
 
     def __str__(self):
-        return str(self.biggie)
+        return six.text_type(self.biggie)
 
 
 class MarkupField(models.CharField):
     def __init__(self, *args, **kwargs):
         kwargs["max_length"] = 20
-        super().__init__(*args, **kwargs)
+        super(MarkupField, self).__init__(*args, **kwargs)
 
     def formfield(self, **kwargs):
         # don't allow this field to be used in form (real use-case might be
@@ -347,11 +384,13 @@ class FlexibleDatePost(models.Model):
     posted = models.DateField(blank=True, null=True)
 
 
+@python_2_unicode_compatible
 class Colour(models.Model):
     name = models.CharField(max_length=50)
 
     def __iter__(self):
-        yield from range(5)
+        for number in range(5):
+            yield number
 
     def __str__(self):
         return self.name
@@ -420,11 +459,11 @@ class Photo(models.Model):
     # Support code for the tests; this keeps track of how many times save()
     # gets called on each instance.
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(Photo, self).__init__(*args, **kwargs)
         self._savecount = 0
 
     def save(self, force_insert=False, force_update=False):
-        super().save(force_insert, force_update)
+        super(Photo, self).save(force_insert, force_update)
         self._savecount += 1
 
 
@@ -441,7 +480,7 @@ class StrictAssignmentFieldSpecific(models.Model):
     def __setattr__(self, key, value):
         if self._should_error is True:
             raise ValidationError(message={key: "Cannot set attribute"}, code='invalid')
-        super().__setattr__(key, value)
+        super(StrictAssignmentFieldSpecific, self).__setattr__(key, value)
 
 
 class StrictAssignmentAll(models.Model):
@@ -451,7 +490,7 @@ class StrictAssignmentAll(models.Model):
     def __setattr__(self, key, value):
         if self._should_error is True:
             raise ValidationError(message="Cannot set attribute", code='invalid')
-        super().__setattr__(key, value)
+        super(StrictAssignmentAll, self).__setattr__(key, value)
 
 
 # A model with ForeignKey(blank=False, null=True)

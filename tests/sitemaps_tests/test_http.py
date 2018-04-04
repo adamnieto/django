@@ -1,13 +1,16 @@
+from __future__ import unicode_literals
+
 import os
 from datetime import date
 from unittest import skipUnless
 
 from django.apps import apps
 from django.conf import settings
-from django.contrib.sitemaps import Sitemap
+from django.contrib.sitemaps import GenericSitemap, Sitemap
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
 from django.test import modify_settings, override_settings
+from django.utils._os import upath
 from django.utils.formats import localize
 from django.utils.translation import activate, deactivate
 
@@ -16,10 +19,6 @@ from .models import TestModel
 
 
 class HTTPSitemapTests(SitemapTestsBase):
-    use_sitemap_err_msg = (
-        'To use sitemaps, either enable the sites framework or pass a '
-        'Site/RequestSite object in your view.'
-    )
 
     def test_simple_sitemap_index(self):
         "A simple sitemap index can be rendered"
@@ -29,31 +28,11 @@ class HTTPSitemapTests(SitemapTestsBase):
 <sitemap><loc>%s/simple/sitemap-simple.xml</loc></sitemap>
 </sitemapindex>
 """ % self.base_url
-        self.assertXMLEqual(response.content.decode(), expected_content)
-
-    def test_sitemap_not_callable(self):
-        """A sitemap may not be callable."""
-        response = self.client.get('/simple-not-callable/index.xml')
-        expected_content = """<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<sitemap><loc>%s/simple/sitemap-simple.xml</loc></sitemap>
-</sitemapindex>
-""" % self.base_url
-        self.assertXMLEqual(response.content.decode(), expected_content)
-
-    def test_paged_sitemap(self):
-        """A sitemap may have multiple pages."""
-        response = self.client.get('/simple-paged/index.xml')
-        expected_content = """<?xml version="1.0" encoding="UTF-8"?>
-<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-<sitemap><loc>{0}/simple/sitemap-simple.xml</loc></sitemap><sitemap><loc>{0}/simple/sitemap-simple.xml?p=2</loc></sitemap>
-</sitemapindex>
-""".format(self.base_url)
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     @override_settings(TEMPLATES=[{
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(os.path.dirname(__file__), 'templates')],
+        'DIRS': [os.path.join(os.path.dirname(upath(__file__)), 'templates')],
     }])
     def test_simple_sitemap_custom_index(self):
         "A simple sitemap index can be rendered with a custom template"
@@ -64,7 +43,7 @@ class HTTPSitemapTests(SitemapTestsBase):
 <sitemap><loc>%s/simple/sitemap-simple.xml</loc></sitemap>
 </sitemapindex>
 """ % self.base_url
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     def test_simple_sitemap_section(self):
         "A simple sitemap section can be rendered"
@@ -74,22 +53,7 @@ class HTTPSitemapTests(SitemapTestsBase):
 <url><loc>%s/location/</loc><lastmod>%s</lastmod><changefreq>never</changefreq><priority>0.5</priority></url>
 </urlset>
 """ % (self.base_url, date.today())
-        self.assertXMLEqual(response.content.decode(), expected_content)
-
-    def test_no_section(self):
-        response = self.client.get('/simple/sitemap-simple2.xml')
-        self.assertEqual(str(response.context['exception']), "No sitemap available for section: 'simple2'")
-        self.assertEqual(response.status_code, 404)
-
-    def test_empty_page(self):
-        response = self.client.get('/simple/sitemap-simple.xml?p=0')
-        self.assertEqual(str(response.context['exception']), 'Page 0 empty')
-        self.assertEqual(response.status_code, 404)
-
-    def test_page_not_int(self):
-        response = self.client.get('/simple/sitemap-simple.xml?p=test')
-        self.assertEqual(str(response.context['exception']), "No page 'test'")
-        self.assertEqual(response.status_code, 404)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     def test_simple_sitemap(self):
         "A simple sitemap can be rendered"
@@ -99,11 +63,11 @@ class HTTPSitemapTests(SitemapTestsBase):
 <url><loc>%s/location/</loc><lastmod>%s</lastmod><changefreq>never</changefreq><priority>0.5</priority></url>
 </urlset>
 """ % (self.base_url, date.today())
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     @override_settings(TEMPLATES=[{
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(os.path.dirname(__file__), 'templates')],
+        'DIRS': [os.path.join(os.path.dirname(upath(__file__)), 'templates')],
     }])
     def test_simple_custom_sitemap(self):
         "A simple sitemap can be rendered with a custom template"
@@ -114,7 +78,7 @@ class HTTPSitemapTests(SitemapTestsBase):
 <url><loc>%s/location/</loc><lastmod>%s</lastmod><changefreq>never</changefreq><priority>0.5</priority></url>
 </urlset>
 """ % (self.base_url, date.today())
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     def test_sitemap_last_modified(self):
         "Last-Modified header is set correctly"
@@ -201,7 +165,7 @@ class HTTPSitemapTests(SitemapTestsBase):
 <url><loc>http://testserver/location/</loc><lastmod>%s</lastmod><changefreq>never</changefreq><priority>0.5</priority></url>
 </urlset>
 """ % date.today()
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     @skipUnless(apps.is_installed('django.contrib.sites'),
                 "django.contrib.sites app not installed.")
@@ -211,7 +175,7 @@ class HTTPSitemapTests(SitemapTestsBase):
         Sitemap.get_urls and no Site objects exist
         """
         Site.objects.all().delete()
-        with self.assertRaisesMessage(ImproperlyConfigured, self.use_sitemap_err_msg):
+        with self.assertRaises(ImproperlyConfigured):
             Sitemap().get_urls()
 
     @modify_settings(INSTALLED_APPS={'remove': 'django.contrib.sites'})
@@ -221,7 +185,7 @@ class HTTPSitemapTests(SitemapTestsBase):
         Sitemap.get_urls if Site objects exists, but the sites framework is not
         actually installed.
         """
-        with self.assertRaisesMessage(ImproperlyConfigured, self.use_sitemap_err_msg):
+        with self.assertRaises(ImproperlyConfigured):
             Sitemap().get_urls()
 
     def test_sitemap_item(self):
@@ -229,8 +193,7 @@ class HTTPSitemapTests(SitemapTestsBase):
         Check to make sure that the raw item is included with each
         Sitemap.get_url() url result.
         """
-        test_sitemap = Sitemap()
-        test_sitemap.items = TestModel.objects.order_by('pk').all
+        test_sitemap = GenericSitemap({'queryset': TestModel.objects.order_by('pk').all()})
 
         def is_testmodel(url):
             return isinstance(url['item'], TestModel)
@@ -247,7 +210,7 @@ class HTTPSitemapTests(SitemapTestsBase):
 <sitemap><loc>%s/cached/sitemap-simple.xml</loc></sitemap>
 </sitemapindex>
 """ % self.base_url
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     def test_x_robots_sitemap(self):
         response = self.client.get('/simple/index.xml')
@@ -269,7 +232,7 @@ class HTTPSitemapTests(SitemapTestsBase):
 <url><loc>{0}/en/i18n/testmodel/{1}/</loc><changefreq>never</changefreq><priority>0.5</priority></url><url><loc>{0}/pt/i18n/testmodel/{1}/</loc><changefreq>never</changefreq><priority>0.5</priority></url>
 </urlset>
 """.format(self.base_url, self.i18n_model.pk)
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)
 
     def test_sitemap_without_entries(self):
         response = self.client.get('/sitemap-without-entries/sitemap.xml')
@@ -277,4 +240,4 @@ class HTTPSitemapTests(SitemapTestsBase):
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
 </urlset>"""
-        self.assertXMLEqual(response.content.decode(), expected_content)
+        self.assertXMLEqual(response.content.decode('utf-8'), expected_content)

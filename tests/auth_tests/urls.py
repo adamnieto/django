@@ -15,7 +15,7 @@ from django.views.decorators.cache import never_cache
 class CustomRequestAuthenticationForm(AuthenticationForm):
     def __init__(self, request, *args, **kwargs):
         assert isinstance(request, HttpRequest)
-        super().__init__(request, *args, **kwargs)
+        super(CustomRequestAuthenticationForm, self).__init__(request, *args, **kwargs)
 
 
 @never_cache
@@ -75,7 +75,7 @@ urlpatterns = auth_urlpatterns + [
     url(r'^password_reset_from_email/$',
         views.PasswordResetView.as_view(from_email='staffmember@example.com')),
     url(r'^password_reset_extra_email_context/$',
-        views.PasswordResetView.as_view(extra_email_context={'greeting': 'Hello!'})),
+        views.PasswordResetView.as_view(extra_email_context=dict(greeting='Hello!'))),
     url(r'^password_reset/custom_redirect/$',
         views.PasswordResetView.as_view(success_url='/custom/')),
     url(r'^password_reset/custom_redirect/named/$',

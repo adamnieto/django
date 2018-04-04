@@ -6,9 +6,13 @@ To define a many-to-many relationship, use ``ManyToManyField()``.
 In this example, an ``Article`` can be published in multiple ``Publication``
 objects, and a ``Publication`` has multiple ``Article`` objects.
 """
+from __future__ import unicode_literals
+
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class Publication(models.Model):
     title = models.CharField(max_length=30)
 
@@ -19,6 +23,7 @@ class Publication(models.Model):
         ordering = ('title',)
 
 
+@python_2_unicode_compatible
 class Tag(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=50)
@@ -27,9 +32,10 @@ class Tag(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Article(models.Model):
     headline = models.CharField(max_length=100)
-    # Assign a string as name to make sure the intermediary model is
+    # Assign a unicode string as name to make sure the intermediary model is
     # correctly created. Refs #20207
     publications = models.ManyToManyField(Publication, name='publications')
     tags = models.ManyToManyField(Tag, related_name='tags')

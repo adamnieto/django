@@ -1,6 +1,9 @@
+from __future__ import unicode_literals
+
 from django.shortcuts import resolve_url
 from django.test import SimpleTestCase, override_settings
 from django.urls import NoReverseMatch, reverse_lazy
+from django.utils import six
 
 from .models import UnimportantThing
 from .urls import some_view
@@ -56,7 +59,7 @@ class ResolveUrlTests(SimpleTestCase):
         string.
         """
         resolved_url = resolve_url(reverse_lazy('some-view'))
-        self.assertIsInstance(resolved_url, str)
+        self.assertIsInstance(resolved_url, six.text_type)
         self.assertEqual('/some-url/', resolved_url)
 
     def test_valid_view_name(self):

@@ -1,11 +1,12 @@
-import unittest
+from __future__ import unicode_literals
+
 from operator import attrgetter
 
 from django.core.exceptions import FieldError, ValidationError
 from django.db import connection, models
 from django.test import SimpleTestCase, TestCase
 from django.test.utils import CaptureQueriesContext, isolate_apps
-from django.utils.version import PY36
+from django.utils import six
 
 from .models import (
     Base, Chef, CommonInfo, GrandChild, GrandParent, ItalianRestaurant,
@@ -26,8 +27,8 @@ class ModelInheritanceTests(TestCase):
 
         s = Student.objects.create(name="Pebbles", age=5, school_class="1B")
 
-        self.assertEqual(str(w1), "Worker Fred")
-        self.assertEqual(str(s), "Student Pebbles")
+        self.assertEqual(six.text_type(w1), "Worker Fred")
+        self.assertEqual(six.text_type(s), "Student Pebbles")
 
         # The children inherit the Meta class of their parents (if they don't
         # specify their own).
@@ -45,7 +46,7 @@ class ModelInheritanceTests(TestCase):
 
         # However, the CommonInfo class cannot be used as a normal model (it
         # doesn't exist as a model).
-        with self.assertRaisesMessage(AttributeError, "'CommonInfo' has no attribute 'objects'"):
+        with self.assertRaises(AttributeError):
             CommonInfo.objects.all()
 
     def test_reverse_relation_for_different_hierarchy_tree(self):
@@ -53,12 +54,7 @@ class ModelInheritanceTests(TestCase):
         # Restaurant object cannot access that reverse relation, since it's not
         # part of the Place-Supplier Hierarchy.
         self.assertQuerysetEqual(Place.objects.filter(supplier__name="foo"), [])
-        msg = (
-            "Cannot resolve keyword 'supplier' into field. Choices are: "
-            "address, chef, chef_id, id, italianrestaurant, lot, name, "
-            "place_ptr, place_ptr_id, provider, rating, serves_hot_dogs, serves_pizza"
-        )
-        with self.assertRaisesMessage(FieldError, msg):
+        with self.assertRaises(FieldError):
             Restaurant.objects.filter(supplier__name="foo")
 
     def test_model_with_distinct_accessors(self):
@@ -72,8 +68,7 @@ class ModelInheritanceTests(TestCase):
 
         # The Post model doesn't have an attribute called
         # 'attached_%(class)s_set'.
-        msg = "'Post' object has no attribute 'attached_%(class)s_set'"
-        with self.assertRaisesMessage(AttributeError, msg):
+        with self.assertRaises(AttributeError):
             getattr(post, "attached_%(class)s_set")
 
     def test_model_with_distinct_related_query_name(self):
@@ -157,23 +152,6 @@ class ModelInheritanceTests(TestCase):
             pass
 
         self.assertIs(C._meta.parents[A], C._meta.get_field('a'))
-
-    @unittest.skipUnless(PY36, 'init_subclass is new in Python 3.6')
-    @isolate_apps('model_inheritance')
-    def test_init_subclass(self):
-        saved_kwargs = {}
-
-        class A:
-            def __init_subclass__(cls, **kwargs):
-                super().__init_subclass__()
-                saved_kwargs.update(kwargs)
-
-        kwargs = {'x': 1, 'y': 2, 'z': 3}
-
-        class B(A, models.Model, **kwargs):
-            pass
-
-        self.assertEqual(saved_kwargs, kwargs)
 
 
 class ModelInheritanceDataTests(TestCase):
@@ -367,22 +345,6 @@ class ModelInheritanceDataTests(TestCase):
         self.assertEqual(qs[0].rating, 2)
         self.assertEqual(qs[1].italianrestaurant.name, 'Ristorante Miron')
         self.assertEqual(qs[1].italianrestaurant.rating, 4)
-
-    def test_parent_cache_reuse(self):
-        place = Place.objects.create()
-        GrandChild.objects.create(place=place)
-        grand_parent = GrandParent.objects.latest('pk')
-        with self.assertNumQueries(1):
-            self.assertEqual(grand_parent.place, place)
-        parent = grand_parent.parent
-        with self.assertNumQueries(0):
-            self.assertEqual(parent.place, place)
-        child = parent.child
-        with self.assertNumQueries(0):
-            self.assertEqual(child.place, place)
-        grandchild = child.grandchild
-        with self.assertNumQueries(0):
-            self.assertEqual(grandchild.place, place)
 
     def test_update_query_counts(self):
         """

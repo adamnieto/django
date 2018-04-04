@@ -1,4 +1,7 @@
-from unittest import mock, skipUnless
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+from unittest import skipUnless
 
 from django.conf.global_settings import PASSWORD_HASHERS
 from django.contrib.auth.hashers import (
@@ -7,8 +10,9 @@ from django.contrib.auth.hashers import (
     check_password, get_hasher, identify_hasher, is_password_usable,
     make_password,
 )
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, mock
 from django.test.utils import override_settings
+from django.utils.encoding import force_bytes
 
 try:
     import crypt
@@ -52,7 +56,7 @@ class TestUtilsHashPass(SimpleTestCase):
 
     def test_pbkdf2(self):
         encoded = make_password('lètmein', 'seasalt', 'pbkdf2_sha256')
-        self.assertEqual(encoded, 'pbkdf2_sha256$100000$seasalt$BNZ6eyaNc8qFTJPjrAq99hSYb73EgAdytAtdBg2Sdcc=')
+        self.assertEqual(encoded, 'pbkdf2_sha256$36000$seasalt$mEUPPFJkT/xtwDU8rB7Q+puHRZnR07WRjerTkt/3HI0=')
         self.assertTrue(is_password_usable(encoded))
         self.assertTrue(check_password('lètmein', encoded))
         self.assertFalse(check_password('lètmeinz', encoded))
@@ -172,7 +176,6 @@ class TestUtilsHashPass(SimpleTestCase):
         self.assertFalse(check_password(' ', blank_encoded))
 
     @skipUnless(bcrypt, "bcrypt not installed")
-    @override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.BCryptPasswordHasher'])
     def test_bcrypt(self):
         encoded = make_password('lètmein', hasher='bcrypt')
         self.assertTrue(is_password_usable(encoded))
@@ -188,7 +191,6 @@ class TestUtilsHashPass(SimpleTestCase):
         self.assertFalse(check_password(' ', blank_encoded))
 
     @skipUnless(bcrypt, "bcrypt not installed")
-    @override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.BCryptPasswordHasher'])
     def test_bcrypt_upgrade(self):
         hasher = get_hasher('bcrypt')
         self.assertEqual('bcrypt', hasher.algorithm)
@@ -221,7 +223,6 @@ class TestUtilsHashPass(SimpleTestCase):
             hasher.rounds = old_rounds
 
     @skipUnless(bcrypt, "bcrypt not installed")
-    @override_settings(PASSWORD_HASHERS=['django.contrib.auth.hashers.BCryptPasswordHasher'])
     def test_bcrypt_harden_runtime(self):
         hasher = get_hasher('bcrypt')
         self.assertEqual('bcrypt', hasher.algorithm)
@@ -240,7 +241,7 @@ class TestUtilsHashPass(SimpleTestCase):
 
             # Get the original salt (includes the original workload factor)
             algorithm, data = encoded.split('$', 1)
-            expected_call = (('wrong_password', data[:29].encode()),)
+            expected_call = (('wrong_password', force_bytes(data[:29])),)
             self.assertEqual(hasher.encode.call_args_list, [expected_call] * 3)
 
     def test_unusable(self):
@@ -253,7 +254,7 @@ class TestUtilsHashPass(SimpleTestCase):
         self.assertFalse(check_password('', encoded))
         self.assertFalse(check_password('lètmein', encoded))
         self.assertFalse(check_password('lètmeinz', encoded))
-        with self.assertRaisesMessage(ValueError, 'Unknown password hashing algorith'):
+        with self.assertRaises(ValueError):
             identify_hasher(encoded)
         # Assert that the unusable passwords actually contain a random part.
         # This might fail one day due to a hash collision.
@@ -267,31 +268,25 @@ class TestUtilsHashPass(SimpleTestCase):
         self.assertFalse(check_password(None, make_password('lètmein')))
 
     def test_bad_algorithm(self):
-        msg = (
-            "Unknown password hashing algorithm '%s'. Did you specify it in "
-            "the PASSWORD_HASHERS setting?"
-        )
-        with self.assertRaisesMessage(ValueError, msg % 'lolcat'):
+        with self.assertRaises(ValueError):
             make_password('lètmein', hasher='lolcat')
-        with self.assertRaisesMessage(ValueError, msg % 'lolcat'):
+        with self.assertRaises(ValueError):
             identify_hasher('lolcat$salt$hash')
 
-    def test_is_password_usable(self):
-        passwords = ('lètmein_badencoded', '', None)
-        for password in passwords:
-            with self.subTest(password=password):
-                self.assertIs(is_password_usable(password), True)
+    def test_bad_encoded(self):
+        self.assertFalse(is_password_usable('lètmein_badencoded'))
+        self.assertFalse(is_password_usable(''))
 
     def test_low_level_pbkdf2(self):
         hasher = PBKDF2PasswordHasher()
         encoded = hasher.encode('lètmein', 'seasalt2')
-        self.assertEqual(encoded, 'pbkdf2_sha256$100000$seasalt2$Tl4GMr+Yt1zzO1sbKoUaDBdds5NkR3RxaDWuQsliFrI=')
+        self.assertEqual(encoded, 'pbkdf2_sha256$36000$seasalt2$QkIBVCvGmTmyjPJ5yox2y/jQB8isvgUNK98FxOU1UYo=')
         self.assertTrue(hasher.verify('lètmein', encoded))
 
     def test_low_level_pbkdf2_sha1(self):
         hasher = PBKDF2SHA1PasswordHasher()
         encoded = hasher.encode('lètmein', 'seasalt2')
-        self.assertEqual(encoded, 'pbkdf2_sha1$100000$seasalt2$dK/dL+ySBZ5zoR0+Zk3SB/VsH0U=')
+        self.assertEqual(encoded, 'pbkdf2_sha1$36000$seasalt2$GoU+9AubJ/xRkO0WD1Xf3WPxWfE=')
         self.assertTrue(hasher.verify('lètmein', encoded))
 
     @override_settings(
@@ -304,14 +299,13 @@ class TestUtilsHashPass(SimpleTestCase):
     def test_upgrade(self):
         self.assertEqual('pbkdf2_sha256', get_hasher('default').algorithm)
         for algo in ('sha1', 'md5'):
-            with self.subTest(algo=algo):
-                encoded = make_password('lètmein', hasher=algo)
-                state = {'upgraded': False}
+            encoded = make_password('lètmein', hasher=algo)
+            state = {'upgraded': False}
 
-                def setter(password):
-                    state['upgraded'] = True
-                self.assertTrue(check_password('lètmein', encoded, setter))
-                self.assertTrue(state['upgraded'])
+            def setter(password):
+                state['upgraded'] = True
+            self.assertTrue(check_password('lètmein', encoded, setter))
+            self.assertTrue(state['upgraded'])
 
     def test_no_upgrade(self):
         encoded = make_password('lètmein')
@@ -332,14 +326,13 @@ class TestUtilsHashPass(SimpleTestCase):
     def test_no_upgrade_on_incorrect_pass(self):
         self.assertEqual('pbkdf2_sha256', get_hasher('default').algorithm)
         for algo in ('sha1', 'md5'):
-            with self.subTest(algo=algo):
-                encoded = make_password('lètmein', hasher=algo)
-                state = {'upgraded': False}
+            encoded = make_password('lètmein', hasher=algo)
+            state = {'upgraded': False}
 
-                def setter():
-                    state['upgraded'] = True
-                self.assertFalse(check_password('WRONG', encoded, setter))
-                self.assertFalse(state['upgraded'])
+            def setter():
+                state['upgraded'] = True
+            self.assertFalse(check_password('WRONG', encoded, setter))
+            self.assertFalse(state['upgraded'])
 
     def test_pbkdf2_upgrade(self):
         hasher = get_hasher('default')
@@ -433,50 +426,17 @@ class TestUtilsHashPass(SimpleTestCase):
             check_password('wrong_password', encoded)
             self.assertEqual(hasher.harden_runtime.call_count, 1)
 
-
-class BasePasswordHasherTests(SimpleTestCase):
-    not_implemented_msg = 'subclasses of BasePasswordHasher must provide %s() method'
-
-    def setUp(self):
-        self.hasher = BasePasswordHasher()
-
     def test_load_library_no_algorithm(self):
-        msg = "Hasher 'BasePasswordHasher' doesn't specify a library attribute"
-        with self.assertRaisesMessage(ValueError, msg):
-            self.hasher._load_library()
+        with self.assertRaises(ValueError) as e:
+            BasePasswordHasher()._load_library()
+        self.assertEqual("Hasher 'BasePasswordHasher' doesn't specify a library attribute", str(e.exception))
 
     def test_load_library_importerror(self):
-        PlainHasher = type('PlainHasher', (BasePasswordHasher,), {'algorithm': 'plain', 'library': 'plain'})
-        msg = "Couldn't load 'PlainHasher' algorithm library: No module named 'plain'"
-        with self.assertRaisesMessage(ValueError, msg):
+        PlainHasher = type(str('PlainHasher'), (BasePasswordHasher,), {'algorithm': 'plain', 'library': 'plain'})
+        # Python 3 adds quotes around module name
+        msg = "Couldn't load 'PlainHasher' algorithm library: No module named '?plain'?"
+        with self.assertRaisesRegex(ValueError, msg):
             PlainHasher()._load_library()
-
-    def test_attributes(self):
-        self.assertIsNone(self.hasher.algorithm)
-        self.assertIsNone(self.hasher.library)
-
-    def test_encode(self):
-        msg = self.not_implemented_msg % 'an encode'
-        with self.assertRaisesMessage(NotImplementedError, msg):
-            self.hasher.encode('password', 'salt')
-
-    def test_harden_runtime(self):
-        msg = 'subclasses of BasePasswordHasher should provide a harden_runtime() method'
-        with self.assertWarns(Warning, msg=msg):
-            self.hasher.harden_runtime('password', 'encoded')
-
-    def test_must_update(self):
-        self.assertIs(self.hasher.must_update('encoded'), False)
-
-    def test_safe_summary(self):
-        msg = self.not_implemented_msg % 'a safe_summary'
-        with self.assertRaisesMessage(NotImplementedError, msg):
-            self.hasher.safe_summary('encoded')
-
-    def test_verify(self):
-        msg = self.not_implemented_msg % 'a verify'
-        with self.assertRaisesMessage(NotImplementedError, msg):
-            self.hasher.verify('password', 'encoded')
 
 
 @skipUnless(argon2, "argon2-cffi not installed")

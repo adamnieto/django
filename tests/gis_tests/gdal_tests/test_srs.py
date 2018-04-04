@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import unittest
 
 from django.contrib.gis.gdal import (
@@ -177,8 +180,8 @@ class SpatialRefTest(unittest.TestCase):
         ]
         srs1 = SpatialReference(srlist[0].wkt)
         srs2 = SpatialReference(WGS84_proj)
-        self.assertTrue(all(part in proj_parts for part in srs1.proj.split()))
-        self.assertTrue(all(part in proj_parts for part in srs2.proj.split()))
+        self.assertTrue(all([part in proj_parts for part in srs1.proj.split()]))
+        self.assertTrue(all([part in proj_parts for part in srs2.proj.split()]))
 
     def test05_epsg(self):
         "Test EPSG import."

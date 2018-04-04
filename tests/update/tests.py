@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.exceptions import FieldError
 from django.db.models import Count, F, Max
 from django.test import TestCase
@@ -83,7 +85,8 @@ class AdvancedTests(TestCase):
         """
         We can update multiple objects at once.
         """
-        resp = DataPoint.objects.filter(value='banana').update(value='pineapple')
+        resp = DataPoint.objects.filter(value="banana").update(
+            value="pineapple")
         self.assertEqual(resp, 2)
         self.assertEqual(DataPoint.objects.get(name="d2").value, 'pineapple')
 
@@ -122,8 +125,7 @@ class AdvancedTests(TestCase):
         We do not support update on already sliced query sets.
         """
         method = DataPoint.objects.all()[:2].update
-        msg = 'Cannot update a query once a slice has been taken.'
-        with self.assertRaisesMessage(AssertionError, msg):
+        with self.assertRaises(AssertionError):
             method(another_value='another thing')
 
     def test_update_respects_to_field(self):
@@ -138,15 +140,6 @@ class AdvancedTests(TestCase):
         self.assertEqual(bar_qs[0].foo_id, a_foo.target)
         bar_qs.update(foo=b_foo)
         self.assertEqual(bar_qs[0].foo_id, b_foo.target)
-
-    def test_update_m2m_field(self):
-        msg = (
-            'Cannot update model field '
-            '<django.db.models.fields.related.ManyToManyField: m2m_foo> '
-            '(only non-relations and foreign keys permitted).'
-        )
-        with self.assertRaisesMessage(FieldError, msg):
-            Bar.objects.update(m2m_foo='whatever')
 
     def test_update_annotated_queryset(self):
         """

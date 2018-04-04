@@ -3,6 +3,7 @@ from unittest import TestCase
 from django.utils.baseconv import (
     BaseConverter, base2, base16, base36, base56, base62, base64,
 )
+from django.utils.six.moves import range
 
 
 class TestBaseConv(TestCase):

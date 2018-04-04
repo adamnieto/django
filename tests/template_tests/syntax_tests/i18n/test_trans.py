@@ -1,7 +1,8 @@
+from __future__ import unicode_literals
+
 from threading import local
 
 from django.template import Context, Template, TemplateSyntaxError
-from django.templatetags.l10n import LocalizeNode
 from django.test import SimpleTestCase, override_settings
 from django.utils import translation
 from django.utils.safestring import mark_safe
@@ -204,9 +205,3 @@ class MultipleLocaleActivationTransTagTests(MultipleLocaleActivationTestCase):
             t = Template("{% load i18n %}{% trans 'No' %}")
         with translation.override('nl'):
             self.assertEqual(t.render(Context({})), 'Nee')
-
-
-class LocalizeNodeTests(SimpleTestCase):
-    def test_repr(self):
-        node = LocalizeNode(nodelist=[], use_l10n=True)
-        self.assertEqual(repr(node), '<LocalizeNode>')

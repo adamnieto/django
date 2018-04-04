@@ -1,5 +1,6 @@
 from django.db import models
 from django.db.models.fields.related import ForwardManyToOneDescriptor
+from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import get_language
 
 
@@ -10,12 +11,12 @@ class ArticleTranslationDescriptor(ForwardManyToOneDescriptor):
     def __set__(self, instance, value):
         if instance is None:
             raise AttributeError("%s must be accessed via instance" % self.field.name)
-        self.field.set_cached_value(instance, value)
+        setattr(instance, self.cache_name, value)
         if value is not None and not self.field.remote_field.multiple:
-            self.field.remote_field.set_cached_value(value, instance)
+            setattr(value, self.field.related.get_cache_name(), instance)
 
 
-class ColConstraint:
+class ColConstraint(object):
     # Anything with as_sql() method works in get_extra_restriction().
     def __init__(self, alias, col, value):
         self.alias, self.col, self.value = alias, col, value
@@ -39,7 +40,7 @@ class ActiveTranslationField(models.ForeignObject):
         return {'lang': get_language()}
 
     def contribute_to_class(self, cls, name):
-        super().contribute_to_class(cls, name)
+        super(ActiveTranslationField, self).contribute_to_class(cls, name)
         setattr(cls, self.name, ArticleTranslationDescriptor(self))
 
 
@@ -48,6 +49,7 @@ class ActiveTranslationFieldWithQ(ActiveTranslationField):
         return models.Q(lang=get_language())
 
 
+@python_2_unicode_compatible
 class Article(models.Model):
     active_translation = ActiveTranslationField(
         'ArticleTranslation',
@@ -83,7 +85,7 @@ class ArticleTranslation(models.Model):
     lang = models.CharField(max_length=2)
     title = models.CharField(max_length=100)
     body = models.TextField()
-    abstract = models.TextField(null=True)
+    abstract = models.CharField(max_length=400, null=True)
 
     class Meta:
         unique_together = ('article', 'lang')

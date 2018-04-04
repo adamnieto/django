@@ -1,8 +1,12 @@
+from __future__ import unicode_literals
+
 import datetime
 
 from django.core import signing
 from django.test import SimpleTestCase
 from django.test.utils import freeze_time
+from django.utils import six
+from django.utils.encoding import force_str
 
 
 class TestSigner(SimpleTestCase):
@@ -14,11 +18,11 @@ class TestSigner(SimpleTestCase):
         for s in (
             b'hello',
             b'3098247:529:087:',
-            '\u2019'.encode(),
+            '\u2019'.encode('utf-8'),
         ):
             self.assertEqual(
                 signer.signature(s),
-                signing.base64_hmac(signer.salt + 'signer', s, 'predictable-secret')
+                signing.base64_hmac(signer.salt + 'signer', s, 'predictable-secret').decode()
             )
             self.assertNotEqual(signer.signature(s), signer2.signature(s))
 
@@ -27,7 +31,7 @@ class TestSigner(SimpleTestCase):
         signer = signing.Signer('predictable-secret', salt='extra-salt')
         self.assertEqual(
             signer.signature('hello'),
-            signing.base64_hmac('extra-salt' + 'signer', 'hello', 'predictable-secret')
+            signing.base64_hmac('extra-salt' + 'signer', 'hello', 'predictable-secret').decode()
         )
         self.assertNotEqual(
             signing.Signer('predictable-secret', salt='one').signature('hello'),
@@ -43,10 +47,12 @@ class TestSigner(SimpleTestCase):
             'jkw osanteuh ,rcuh nthu aou oauh ,ud du',
             '\u2019',
         ]
+        if six.PY2:
+            examples.append(b'a byte string')
         for example in examples:
             signed = signer.sign(example)
             self.assertIsInstance(signed, str)
-            self.assertNotEqual(example, signed)
+            self.assertNotEqual(force_str(example), signed)
             self.assertEqual(example, signer.unsign(signed))
 
     def test_unsign_detects_tampering(self):
@@ -69,9 +75,11 @@ class TestSigner(SimpleTestCase):
         "dumps and loads be reversible for any JSON serializable object"
         objects = [
             ['a', 'list'],
-            'a string \u2019',
+            'a unicode string \u2019',
             {'a': 'dictionary'},
         ]
+        if six.PY2:
+            objects.append(b'a byte string')
         for o in objects:
             self.assertNotEqual(o, signing.dumps(o))
             self.assertEqual(o, signing.loads(signing.dumps(o)))

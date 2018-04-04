@@ -13,19 +13,19 @@ class SecurityMiddlewareTest(SimpleTestCase):
     def secure_request_kwargs(self):
         return {"wsgi.url_scheme": "https"}
 
-    def response(self, *args, headers=None, **kwargs):
+    def response(self, *args, **kwargs):
+        headers = kwargs.pop("headers", {})
         response = HttpResponse(*args, **kwargs)
-        if headers:
-            for k, v in headers.items():
-                response[k] = v
+        for k, v in headers.items():
+            response[k] = v
         return response
 
-    def process_response(self, *args, secure=False, request=None, **kwargs):
+    def process_response(self, *args, **kwargs):
         request_kwargs = {}
-        if secure:
+        if kwargs.pop("secure", False):
             request_kwargs.update(self.secure_request_kwargs)
-        if request is None:
-            request = self.request.get("/some/url", **request_kwargs)
+        request = (kwargs.pop("request", None) or
+                   self.request.get("/some/url", **request_kwargs))
         ret = self.middleware.process_request(request)
         if ret:
             return ret
@@ -34,8 +34,8 @@ class SecurityMiddlewareTest(SimpleTestCase):
 
     request = RequestFactory()
 
-    def process_request(self, method, *args, secure=False, **kwargs):
-        if secure:
+    def process_request(self, method, *args, **kwargs):
+        if kwargs.pop("secure", False):
             kwargs.update(self.secure_request_kwargs)
         req = getattr(self.request, method.lower())(*args, **kwargs)
         return self.middleware.process_request(req)
@@ -48,8 +48,7 @@ class SecurityMiddlewareTest(SimpleTestCase):
         """
         self.assertEqual(
             self.process_response(secure=True)["strict-transport-security"],
-            'max-age=3600',
-        )
+            "max-age=3600")
 
     @override_settings(SECURE_HSTS_SECONDS=3600)
     def test_sts_already_present(self):

@@ -299,12 +299,10 @@ Finally, here's an example of a fairly complex logging setup::
         'disable_existing_loggers': False,
         'formatters': {
             'verbose': {
-                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-                'style': '{',
+                'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(thread)d %(message)s'
             },
             'simple': {
-                'format': '{levelname} {message}',
-                'style': '{',
+                'format': '%(levelname)s %(message)s'
             },
         },
         'filters': {
@@ -379,13 +377,13 @@ This logging configuration does the following things:
 
 * Defines two handlers:
 
-  * ``console``, a :class:`~logging.StreamHandler`, which prints any ``INFO``
-    (or higher) message to ``sys.stderr``. This handler uses the ``simple``
-    output format.
+  * ``console``, a StreamHandler, which will print any ``INFO``
+    (or higher) message to stderr. This handler uses the ``simple`` output
+    format.
 
-  * ``mail_admins``, an :class:`AdminEmailHandler`, which emails any ``ERROR``
-    (or higher) message to the site :setting:`ADMINS`. This handler uses the
-    ``special`` filter.
+  * ``mail_admins``, an AdminEmailHandler, which will email any
+    ``ERROR`` (or higher) message to the site admins. This handler uses
+    the ``special`` filter.
 
 * Configures three loggers:
 
@@ -483,6 +481,8 @@ Messages to this logger have the following extra context:
 ``django.server``
 ~~~~~~~~~~~~~~~~~
 
+.. versionadded:: 1.10
+
 Log messages related to the handling of requests received by the server invoked
 by the :djadmin:`runserver` command. HTTP 5XX responses are logged as ``ERROR``
 messages, 4XX responses are logged as ``WARNING`` messages, and everything else
@@ -502,6 +502,11 @@ Messages to this logger have the following extra context:
 Log messages related to the rendering of templates.
 
 * Missing context variables are logged as ``DEBUG`` messages.
+
+* Uncaught exceptions raised during the rendering of an
+  :ttag:`{% include %} <include>` are logged as ``WARNING`` messages when
+  debug mode is off (helpful since ``{% include %}`` silences the exception and
+  returns an empty string in that case).
 
 .. _django-db-logger:
 
@@ -579,6 +584,10 @@ Messages to this logger have ``params`` and ``sql`` in their extra context (but
 unlike ``django.db.backends``, not duration). The values have the same meaning
 as explained in :ref:`django-db-logger`.
 
+.. versionadded:: 1.10
+
+    The ``extra`` context was added.
+
 Handlers
 --------
 
@@ -587,7 +596,7 @@ Python logging module.
 
 .. class:: AdminEmailHandler(include_html=False, email_backend=None)
 
-    This handler sends an email to the site :setting:`ADMINS` for each log
+    This handler sends an email to the site admins for each log
     message it receives.
 
     If the log record contains a ``request`` attribute, the full details
@@ -653,7 +662,7 @@ Python logging module.
 Filters
 -------
 
-Django provides some log filters in addition to those provided by the Python
+Django provides two log filters in addition to those provided by the Python
 logging module.
 
 .. class:: CallbackFilter(callback)

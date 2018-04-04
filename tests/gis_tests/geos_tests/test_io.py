@@ -1,11 +1,17 @@
+from __future__ import unicode_literals
+
 import binascii
+from unittest import skipUnless
 
 from django.contrib.gis.geos import (
-    GEOSGeometry, Point, Polygon, WKBReader, WKBWriter, WKTReader, WKTWriter,
+    HAS_GEOS, GEOSGeometry, Point, Polygon, WKBReader, WKBWriter, WKTReader,
+    WKTWriter,
 )
 from django.test import SimpleTestCase
+from django.utils.six import memoryview
 
 
+@skipUnless(HAS_GEOS, "Geos is required.")
 class GEOSIOTest(SimpleTestCase):
 
     def test01_wktreader(self):
@@ -21,7 +27,7 @@ class GEOSIOTest(SimpleTestCase):
         for geom in (g1, g2):
             self.assertEqual(ref, geom)
 
-        # Should only accept string objects.
+        # Should only accept six.string_types objects.
         with self.assertRaises(TypeError):
             wkt_r.read(1)
         with self.assertRaises(TypeError):

@@ -6,6 +6,8 @@ test case that is capable of testing the capabilities of
 the serializers. This includes all valid data values, plus
 forward, backwards and self references.
 """
+from __future__ import unicode_literals
+
 import datetime
 import decimal
 import uuid
@@ -13,20 +15,20 @@ import uuid
 from django.core import serializers
 from django.db import connection, models
 from django.test import TestCase
+from django.utils import six
 
 from .models import (
     Anchor, AutoNowDateTimeData, BigIntegerData, BinaryData, BooleanData,
-    BooleanPKData, CharData, CharPKData, DateData, DatePKData, DateTimeData,
-    DateTimePKData, DecimalData, DecimalPKData, EmailData, EmailPKData,
-    ExplicitInheritBaseModel, FileData, FilePathData, FilePathPKData, FKData,
-    FKDataToField, FKDataToO2O, FKSelfData, FKToUUID, FloatData, FloatPKData,
-    GenericData, GenericIPAddressData, GenericIPAddressPKData,
-    InheritAbstractModel, InheritBaseModel, IntegerData, IntegerPKData,
-    Intermediate, LengthModel, M2MData, M2MIntermediateData, M2MSelfData,
-    ModifyingSaveData, NullBooleanData, O2OData, PositiveIntegerData,
-    PositiveIntegerPKData, PositiveSmallIntegerData,
-    PositiveSmallIntegerPKData, SlugData, SlugPKData, SmallData, SmallPKData,
-    Tag, TextData, TimeData, UniqueAnchor, UUIDData,
+    BooleanPKData, CharData, CharPKData, DateData, DateTimeData, DecimalData,
+    DecimalPKData, EmailData, EmailPKData, ExplicitInheritBaseModel, FileData,
+    FilePathData, FilePathPKData, FKData, FKDataToField, FKDataToO2O,
+    FKSelfData, FKToUUID, FloatData, FloatPKData, GenericData,
+    GenericIPAddressData, GenericIPAddressPKData, InheritAbstractModel,
+    InheritBaseModel, IntegerData, IntegerPKData, Intermediate, LengthModel,
+    M2MData, M2MIntermediateData, M2MSelfData, ModifyingSaveData,
+    NullBooleanData, O2OData, PositiveIntegerData, PositiveIntegerPKData,
+    PositiveSmallIntegerData, PositiveSmallIntegerPKData, SlugData, SlugPKData,
+    SmallData, SmallPKData, Tag, TextData, TimeData, UniqueAnchor, UUIDData,
 )
 from .tests import register_tests
 
@@ -106,7 +108,7 @@ def inherited_create(pk, klass, data):
     #     automatically is easier than manually creating both.
     models.Model.save(instance)
     created = [instance]
-    for klass in instance._meta.parents:
+    for klass, field in instance._meta.parents.items():
         created.append(klass.objects.get(id=pk))
     return created
 
@@ -196,11 +198,10 @@ uuid_obj = uuid.uuid4()
 
 test_data = [
     # Format: (data type, PK value, Model Class, data)
-    (data_obj, 1, BinaryData, memoryview(b"\x05\xFD\x00")),
+    (data_obj, 1, BinaryData, six.memoryview(b"\x05\xFD\x00")),
     (data_obj, 2, BinaryData, None),
     (data_obj, 5, BooleanData, True),
     (data_obj, 6, BooleanData, False),
-    (data_obj, 7, BooleanData, None),
     (data_obj, 10, CharData, "Test Char Data"),
     (data_obj, 11, CharData, ""),
     (data_obj, 12, CharData, "None"),
@@ -319,8 +320,8 @@ The end."""),
     (pk_obj, 601, BooleanPKData, True),
     (pk_obj, 602, BooleanPKData, False),
     (pk_obj, 610, CharPKData, "Test Char PKData"),
-    (pk_obj, 620, DatePKData, datetime.date(2006, 6, 16)),
-    (pk_obj, 630, DateTimePKData, datetime.datetime(2006, 6, 16, 10, 42, 37)),
+    # (pk_obj, 620, DatePKData, datetime.date(2006, 6, 16)),
+    # (pk_obj, 630, DateTimePKData, datetime.datetime(2006, 6, 16, 10, 42, 37)),
     (pk_obj, 640, EmailPKData, "hovercraft@example.com"),
     # (pk_obj, 650, FilePKData, 'file:///foo/bar/whiz.txt'),
     (pk_obj, 660, FilePathPKData, "/foo/bar/whiz.txt"),
@@ -335,6 +336,8 @@ The end."""),
     (pk_obj, 682, IntegerPKData, 0),
     # (XX, ImagePKData
     (pk_obj, 695, GenericIPAddressPKData, "fe80:1424:2223:6cff:fe8a:2e8a:2151:abcd"),
+    # (pk_obj, 700, NullBooleanPKData, True),
+    # (pk_obj, 701, NullBooleanPKData, False),
     (pk_obj, 720, PositiveIntegerPKData, 123456789),
     (pk_obj, 730, PositiveSmallIntegerPKData, 12),
     (pk_obj, 740, SlugPKData, "this-is-a-slug"),
@@ -389,7 +392,7 @@ class SerializerDataTests(TestCase):
     pass
 
 
-def serializerTest(self, format):
+def serializerTest(format, self):
 
     # Create all the objects defined in the test data
     objects = []

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.exceptions import FieldError
 from django.test import TestCase
 
@@ -102,7 +104,7 @@ class M2MRegressionTests(TestCase):
         c1 = TagCollection.objects.create(name='c1')
         c1.tags.set([t1, t2])
 
-        with self.assertRaisesMessage(TypeError, "'int' object is not iterable"):
+        with self.assertRaises(TypeError):
             c1.tags.set(7)
 
         c1.refresh_from_db()

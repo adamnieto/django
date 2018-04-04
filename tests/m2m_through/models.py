@@ -1,9 +1,11 @@
 from datetime import datetime
 
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
 # M2M described on one of the models
+@python_2_unicode_compatible
 class Person(models.Model):
     name = models.CharField(max_length=128)
 
@@ -14,6 +16,7 @@ class Person(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Group(models.Model):
     name = models.CharField(max_length=128)
     members = models.ManyToManyField(Person, through='Membership')
@@ -31,6 +34,7 @@ class Group(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Membership(models.Model):
     person = models.ForeignKey(Person, models.CASCADE)
     group = models.ForeignKey(Group, models.CASCADE)
@@ -44,6 +48,7 @@ class Membership(models.Model):
         return "%s is a member of %s" % (self.person.name, self.group.name)
 
 
+@python_2_unicode_compatible
 class CustomMembership(models.Model):
     person = models.ForeignKey(
         Person,
@@ -69,6 +74,7 @@ class TestNoDefaultsOrNulls(models.Model):
     nodefaultnonull = models.CharField(max_length=5)
 
 
+@python_2_unicode_compatible
 class PersonSelfRefM2M(models.Model):
     name = models.CharField(max_length=5)
     friends = models.ManyToManyField('self', through="Friendship", symmetrical=False)
@@ -84,6 +90,7 @@ class Friendship(models.Model):
 
 
 # Custom through link fields
+@python_2_unicode_compatible
 class Event(models.Model):
     title = models.CharField(max_length=50)
     invitees = models.ManyToManyField(
@@ -103,6 +110,7 @@ class Invitation(models.Model):
     invitee = models.ForeignKey(Person, models.CASCADE, related_name='invitations')
 
 
+@python_2_unicode_compatible
 class Employee(models.Model):
     name = models.CharField(max_length=5)
     subordinates = models.ManyToManyField(

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import contextlib
 import time
 import unittest
@@ -61,14 +63,6 @@ class Mult3BilateralTransform(models.Transform):
     def as_sql(self, compiler, connection):
         lhs, lhs_params = compiler.compile(self.lhs)
         return '3 * (%s)' % lhs, lhs_params
-
-
-class LastDigitTransform(models.Transform):
-    lookup_name = 'lastdigit'
-
-    def as_sql(self, compiler, connection):
-        lhs, lhs_params = compiler.compile(self.lhs)
-        return 'SUBSTR(CAST(%s AS CHAR(2)), 2, 1)' % lhs, lhs_params
 
 
 class UpperBilateralTransform(models.Transform):
@@ -142,7 +136,7 @@ class Exactly(models.lookups.Exact):
         return connection.operators['exact'] % rhs
 
 
-class SQLFuncMixin:
+class SQLFuncMixin(object):
     def as_sql(self, compiler, connection):
         return '%s()', [self.name]
 
@@ -153,17 +147,17 @@ class SQLFuncMixin:
 
 class SQLFuncLookup(SQLFuncMixin, models.Lookup):
     def __init__(self, name, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(SQLFuncLookup, self).__init__(*args, **kwargs)
         self.name = name
 
 
 class SQLFuncTransform(SQLFuncMixin, models.Transform):
     def __init__(self, name, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(SQLFuncTransform, self).__init__(*args, **kwargs)
         self.name = name
 
 
-class SQLFuncFactory:
+class SQLFuncFactory(object):
 
     def __init__(self, key, name):
         self.key = key
@@ -181,13 +175,13 @@ class CustomField(models.TextField):
         if lookup_name.startswith('lookupfunc_'):
             key, name = lookup_name.split('_', 1)
             return SQLFuncFactory(key, name)
-        return super().get_lookup(lookup_name)
+        return super(CustomField, self).get_lookup(lookup_name)
 
     def get_transform(self, lookup_name):
         if lookup_name.startswith('transformfunc_'):
             key, name = lookup_name.split('_', 1)
             return SQLFuncFactory(key, name)
-        return super().get_transform(lookup_name)
+        return super(CustomField, self).get_transform(lookup_name)
 
 
 class CustomModel(models.Model):
@@ -247,23 +241,6 @@ class LookupTests(TestCase):
             YearTransform._unregister_lookup(Exactly, custom_lookup_name)
             models.DateField._unregister_lookup(YearTransform)
             models.DateField._unregister_lookup(YearTransform, custom_transform_name)
-
-    def test_custom_exact_lookup_none_rhs(self):
-        """
-        __exact=None is transformed to __isnull=True if a custom lookup class
-        with lookup_name != 'exact' is registered as the `exact` lookup.
-        """
-        class CustomExactLookup(models.Lookup):
-            lookup_name = 'somecustomlookup'
-
-        field = Author._meta.get_field('birthdate')
-        OldExactLookup = field.get_lookup('exact')
-        author = Author.objects.create(name='author', birthdate=None)
-        try:
-            type(field).register_lookup(Exactly, 'exact')
-            self.assertEqual(Author.objects.get(birthdate__exact=None), author)
-        finally:
-            type(field).register_lookup(OldExactLookup, 'exact')
 
     def test_basic_lookup(self):
         a1 = Author.objects.create(name='a1', age=1)
@@ -344,8 +321,7 @@ class BilateralTransformTests(TestCase):
 
     def test_bilateral_inner_qs(self):
         with register_lookup(models.CharField, UpperBilateralTransform):
-            msg = 'Bilateral transformations on nested querysets are not implemented.'
-            with self.assertRaisesMessage(NotImplementedError, msg):
+            with self.assertRaises(NotImplementedError):
                 Author.objects.filter(name__upper__in=Author.objects.values_list('name'))
 
     def test_bilateral_multi_value(self):
@@ -386,15 +362,6 @@ class BilateralTransformTests(TestCase):
             # mult3__div3 always leads to 0
             self.assertSequenceEqual(baseqs.filter(age__mult3__div3=42), [a1, a2, a3, a4])
             self.assertSequenceEqual(baseqs.filter(age__div3__mult3=42), [a3])
-
-    def test_transform_order_by(self):
-        with register_lookup(models.IntegerField, LastDigitTransform):
-            a1 = Author.objects.create(name='a1', age=11)
-            a2 = Author.objects.create(name='a2', age=23)
-            a3 = Author.objects.create(name='a3', age=32)
-            a4 = Author.objects.create(name='a4', age=40)
-            qs = Author.objects.order_by('age__lastdigit')
-            self.assertSequenceEqual(qs, [a4, a1, a3, a2])
 
     def test_bilateral_fexpr(self):
         with register_lookup(models.IntegerField, Mult3BilateralTransform):
@@ -525,25 +492,24 @@ class TrackCallsYearTransform(YearTransform):
 
     def get_lookup(self, lookup_name):
         self.call_order.append('lookup')
-        return super().get_lookup(lookup_name)
+        return super(TrackCallsYearTransform, self).get_lookup(lookup_name)
 
     def get_transform(self, lookup_name):
         self.call_order.append('transform')
-        return super().get_transform(lookup_name)
+        return super(TrackCallsYearTransform, self).get_transform(lookup_name)
 
 
 class LookupTransformCallOrderTests(TestCase):
     def test_call_order(self):
         with register_lookup(models.DateField, TrackCallsYearTransform):
             # junk lookup - tries lookup, then transform, then fails
-            msg = "Unsupported lookup 'junk' for IntegerField or join on the field not permitted."
-            with self.assertRaisesMessage(FieldError, msg):
+            with self.assertRaises(FieldError):
                 Author.objects.filter(birthdate__testyear__junk=2012)
             self.assertEqual(TrackCallsYearTransform.call_order,
                              ['lookup', 'transform'])
             TrackCallsYearTransform.call_order = []
             # junk transform - tries transform only, then fails
-            with self.assertRaisesMessage(FieldError, msg):
+            with self.assertRaises(FieldError):
                 Author.objects.filter(birthdate__testyear__junk__more_junk=2012)
             self.assertEqual(TrackCallsYearTransform.call_order,
                              ['transform'])

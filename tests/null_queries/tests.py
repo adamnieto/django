@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.exceptions import FieldError
 from django.test import TestCase
 
@@ -23,21 +25,26 @@ class NullQueriesTests(TestCase):
 
         # Exact query with value None returns nothing ("is NULL" in sql,
         # but every 'id' field has a value).
-        self.assertSequenceEqual(Choice.objects.filter(choice__exact=None), [])
+        self.assertQuerysetEqual(Choice.objects.filter(choice__exact=None), [])
 
         # The same behavior for iexact query.
-        self.assertSequenceEqual(Choice.objects.filter(choice__iexact=None), [])
+        self.assertQuerysetEqual(Choice.objects.filter(choice__iexact=None), [])
 
         # Excluding the previous result returns everything.
-        self.assertSequenceEqual(Choice.objects.exclude(choice=None).order_by('id'), [c1, c2])
+        self.assertQuerysetEqual(
+            Choice.objects.exclude(choice=None).order_by('id'),
+            [
+                '<Choice: Choice: Because. in poll Q: Why? >',
+                '<Choice: Choice: Why Not? in poll Q: Why? >'
+            ]
+        )
 
         # Valid query, but fails because foo isn't a keyword
-        msg = "Cannot resolve keyword 'foo' into field. Choices are: choice, id, poll, poll_id"
-        with self.assertRaisesMessage(FieldError, msg):
+        with self.assertRaises(FieldError):
             Choice.objects.filter(foo__exact=None)
 
         # Can't use None on anything other than __exact and __iexact
-        with self.assertRaisesMessage(ValueError, 'Cannot use None as a query value'):
+        with self.assertRaises(ValueError):
             Choice.objects.filter(id__gt=None)
 
         # Related managers use __exact=None implicitly if the object hasn't been saved.
@@ -50,15 +57,30 @@ class NullQueriesTests(TestCase):
         insert outer joins correctly so as not to exclude results.
         """
         obj = OuterA.objects.create()
-        self.assertSequenceEqual(OuterA.objects.filter(inner__third=None), [obj])
-        self.assertSequenceEqual(OuterA.objects.filter(inner__third__data=None), [obj])
+        self.assertQuerysetEqual(
+            OuterA.objects.filter(inner__third=None),
+            ['<OuterA: OuterA object>']
+        )
+        self.assertQuerysetEqual(
+            OuterA.objects.filter(inner__third__data=None),
+            ['<OuterA: OuterA object>']
+        )
 
-        inner = Inner.objects.create(first=obj)
-        self.assertSequenceEqual(Inner.objects.filter(first__inner__third=None), [inner])
+        Inner.objects.create(first=obj)
+        self.assertQuerysetEqual(
+            Inner.objects.filter(first__inner__third=None),
+            ['<Inner: Inner object>']
+        )
 
         # Ticket #13815: check if <reverse>_isnull=False does not produce
         # faulty empty lists
-        outerb = OuterB.objects.create(data='reverse')
-        self.assertSequenceEqual(OuterB.objects.filter(inner__isnull=False), [])
+        OuterB.objects.create(data="reverse")
+        self.assertQuerysetEqual(
+            OuterB.objects.filter(inner__isnull=False),
+            []
+        )
         Inner.objects.create(first=obj)
-        self.assertSequenceEqual(OuterB.objects.exclude(inner__isnull=False), [outerb])
+        self.assertQuerysetEqual(
+            OuterB.objects.exclude(inner__isnull=False),
+            ['<OuterB: OuterB object>']
+        )

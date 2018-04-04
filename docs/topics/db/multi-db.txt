@@ -109,6 +109,11 @@ creating new migrations. By default, it checks only the ``default`` database,
 but it consults the :meth:`allow_migrate` method of :ref:`routers
 <topics-db-multi-db-routing>` if any are installed.
 
+.. versionchanged:: 1.10
+
+    Migration consistency checks were added. Checks based on database routers
+    were added in 1.10.1.
+
 .. _topics-db-multi-db-routing:
 
 Automatic database routing
@@ -295,7 +300,7 @@ databases::
 Now we'll need to handle routing. First we want a router that knows to
 send queries for the ``auth`` app to ``auth_db``::
 
-    class AuthRouter:
+    class AuthRouter(object):
         """
         A router to control all database operations on models in the
         auth application.
@@ -340,7 +345,7 @@ from::
 
     import random
 
-    class PrimaryReplicaRouter:
+    class PrimaryReplicaRouter(object):
         def db_for_read(self, model, **hints):
             """
             Reads go to a randomly-chosen replica.
@@ -592,17 +597,17 @@ multiple-database support::
 
         def get_queryset(self, request):
             # Tell Django to look for objects on the 'other' database.
-            return super().get_queryset(request).using(self.using)
+            return super(MultiDBModelAdmin, self).get_queryset(request).using(self.using)
 
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             # Tell Django to populate ForeignKey widgets using a query
             # on the 'other' database.
-            return super().formfield_for_foreignkey(db_field, request, using=self.using, **kwargs)
+            return super(MultiDBModelAdmin, self).formfield_for_foreignkey(db_field, request, using=self.using, **kwargs)
 
         def formfield_for_manytomany(self, db_field, request, **kwargs):
             # Tell Django to populate ManyToMany widgets using a query
             # on the 'other' database.
-            return super().formfield_for_manytomany(db_field, request, using=self.using, **kwargs)
+            return super(MultiDBModelAdmin, self).formfield_for_manytomany(db_field, request, using=self.using, **kwargs)
 
 The implementation provided here implements a multi-database strategy
 where all objects of a given type are stored on a specific database
@@ -618,17 +623,17 @@ similar fashion. They require three customized methods::
 
         def get_queryset(self, request):
             # Tell Django to look for inline objects on the 'other' database.
-            return super().get_queryset(request).using(self.using)
+            return super(MultiDBTabularInline, self).get_queryset(request).using(self.using)
 
         def formfield_for_foreignkey(self, db_field, request, **kwargs):
             # Tell Django to populate ForeignKey widgets using a query
             # on the 'other' database.
-            return super().formfield_for_foreignkey(db_field, request, using=self.using, **kwargs)
+            return super(MultiDBTabularInline, self).formfield_for_foreignkey(db_field, request, using=self.using, **kwargs)
 
         def formfield_for_manytomany(self, db_field, request, **kwargs):
             # Tell Django to populate ManyToMany widgets using a query
             # on the 'other' database.
-            return super().formfield_for_manytomany(db_field, request, using=self.using, **kwargs)
+            return super(MultiDBTabularInline, self).formfield_for_manytomany(db_field, request, using=self.using, **kwargs)
 
 Once you've written your model admin definitions, they can be
 registered with any ``Admin`` instance::
@@ -650,7 +655,7 @@ registered with any ``Admin`` instance::
 
 This example sets up two admin sites. On the first site, the
 ``Author`` and ``Publisher`` objects are exposed; ``Publisher``
-objects have a tabular inline showing books published by that
+objects have an tabular inline showing books published by that
 publisher. The second site exposes just publishers, without the
 inlines.
 
@@ -664,8 +669,7 @@ object that allows you to retrieve a specific connection using its
 alias::
 
     from django.db import connections
-    with connections['my_db_alias'].cursor() as cursor:
-        ...
+    cursor = connections['my_db_alias'].cursor()
 
 Limitations of multiple databases
 =================================

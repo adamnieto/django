@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from datetime import datetime
 from decimal import Decimal
 
@@ -105,7 +107,7 @@ class UtilsTests(SimpleTestCase):
         SIMPLE_FUNCTION = 'function'
         INSTANCE_ATTRIBUTE = 'attr'
 
-        class MockModelAdmin:
+        class MockModelAdmin(object):
             def get_admin_value(self, obj):
                 return ADMIN_METHOD
 
@@ -163,10 +165,6 @@ class UtilsTests(SimpleTestCase):
         # Regression test for #13071: NullBooleanField has special
         # handling.
         display_value = display_for_field(None, models.NullBooleanField(), self.empty_value)
-        expected = '<img src="%sadmin/img/icon-unknown.svg" alt="None">' % settings.STATIC_URL
-        self.assertHTMLEqual(display_value, expected)
-
-        display_value = display_for_field(None, models.BooleanField(null=True), self.empty_value)
         expected = '<img src="%sadmin/img/icon-unknown.svg" alt="None" />' % settings.STATIC_URL
         self.assertHTMLEqual(display_value, expected)
 
@@ -204,19 +202,6 @@ class UtilsTests(SimpleTestCase):
         display_value = display_for_value([1, 2, 'buckle', 'my', 'shoe'], self.empty_value)
         self.assertEqual(display_value, '1, 2, buckle, my, shoe')
 
-    @override_settings(USE_L10N=True, USE_THOUSAND_SEPARATOR=True)
-    def test_list_display_for_value_boolean(self):
-        self.assertEqual(
-            display_for_value(True, '', boolean=True),
-            '<img src="/static/admin/img/icon-yes.svg" alt="True">'
-        )
-        self.assertEqual(
-            display_for_value(False, '', boolean=True),
-            '<img src="/static/admin/img/icon-no.svg" alt="False">'
-        )
-        self.assertEqual(display_for_value(True, ''), 'True')
-        self.assertEqual(display_for_value(False, ''), 'False')
-
     def test_label_for_field(self):
         """
         Tests for label_for_field
@@ -235,11 +220,15 @@ class UtilsTests(SimpleTestCase):
         )
 
         self.assertEqual(
-            label_for_field("__str__", Article),
+            label_for_field("__unicode__", Article),
             "article"
         )
+        self.assertEqual(
+            label_for_field("__str__", Article),
+            str("article")
+        )
 
-        with self.assertRaisesMessage(AttributeError, "Unable to lookup 'unknown' on Article"):
+        with self.assertRaises(AttributeError):
             label_for_field("unknown", Article)
 
         def test_callable(obj):
@@ -272,7 +261,7 @@ class UtilsTests(SimpleTestCase):
         )
         self.assertEqual(label_for_field('site_id', Article), 'Site id')
 
-        class MockModelAdmin:
+        class MockModelAdmin(object):
             def test_from_model(self, obj):
                 return "nothing"
             test_from_model.short_description = "not Really the Model"
@@ -289,7 +278,7 @@ class UtilsTests(SimpleTestCase):
     def test_label_for_property(self):
         # NOTE: cannot use @property decorator, because of
         # AttributeError: 'property' object has no attribute 'short_description'
-        class MockModelAdmin:
+        class MockModelAdmin(object):
             def my_property(self):
                 return "this if from property"
             my_property.short_description = 'property short description'

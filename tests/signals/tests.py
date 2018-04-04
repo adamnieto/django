@@ -1,11 +1,12 @@
-from unittest import mock
+from __future__ import unicode_literals
 
 from django.apps.registry import Apps
 from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
-from django.test import TestCase
+from django.test import TestCase, mock
 from django.test.utils import isolate_apps
+from django.utils import six
 
 from .models import Author, Book, Car, Person
 
@@ -124,7 +125,7 @@ class SignalTests(BaseSignalTest):
             )
 
         # #8285: signals can be any callable
-        class PostDeleteHandler:
+        class PostDeleteHandler(object):
             def __init__(self, data):
                 self.data = data
 
@@ -161,7 +162,7 @@ class SignalTests(BaseSignalTest):
                 Person.objects.all(), [
                     "James Jones",
                 ],
-                str
+                six.text_type
             )
         finally:
             signals.pre_delete.disconnect(pre_delete_handler)
@@ -249,7 +250,7 @@ class SignalTests(BaseSignalTest):
         dispatching.
         """
 
-        class Handler:
+        class Handler(object):
             def __init__(self, param):
                 self.param = param
                 self._run = False
@@ -283,7 +284,7 @@ class SignalTests(BaseSignalTest):
 
 class LazyModelRefTest(BaseSignalTest):
     def setUp(self):
-        super().setUp()
+        super(LazyModelRefTest, self).setUp()
         self.received = []
 
     def receiver(self, **kwargs):

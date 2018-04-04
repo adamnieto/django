@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from django.test import TestCase
 
 from .models import Article, Bar, Base, Child, Foo, Whiz
@@ -50,6 +53,9 @@ class StringLookupTests(TestCase):
         fx = Foo(name='Bjorn', friend='François')
         fx.save()
         self.assertEqual(Foo.objects.get(friend__contains='\xe7'), fx)
+
+        # We can also do the above query using UTF-8 strings.
+        self.assertEqual(Foo.objects.get(friend__contains=b'\xc3\xa7'), fx)
 
     def test_queries_on_textfields(self):
         """

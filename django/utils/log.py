@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import logging
 import logging.config  # needed when logging_config doesn't start with logging.config
 from copy import copy
@@ -27,8 +29,7 @@ DEFAULT_LOGGING = {
     'formatters': {
         'django.server': {
             '()': 'django.utils.log.ServerFormatter',
-            'format': '[{server_time}] {message}',
-            'style': '{',
+            'format': '[%(server_time)s] %(message)s',
         }
     },
     'handlers': {
@@ -82,7 +83,7 @@ class AdminEmailHandler(logging.Handler):
     """
 
     def __init__(self, include_html=False, email_backend=None):
-        super().__init__()
+        logging.Handler.__init__(self)
         self.include_html = include_html
         self.email_backend = email_backend
 
@@ -160,7 +161,7 @@ class RequireDebugTrue(logging.Filter):
 class ServerFormatter(logging.Formatter):
     def __init__(self, *args, **kwargs):
         self.style = color_style()
-        super().__init__(*args, **kwargs)
+        super(ServerFormatter, self).__init__(*args, **kwargs)
 
     def format(self, record):
         msg = record.msg
@@ -188,7 +189,7 @@ class ServerFormatter(logging.Formatter):
             record.server_time = self.formatTime(record, self.datefmt)
 
         record.msg = msg
-        return super().format(record)
+        return super(ServerFormatter, self).format(record)
 
     def uses_server_time(self):
-        return self._fmt.find('{server_time}') >= 0
+        return self._fmt.find('%(server_time)') >= 0

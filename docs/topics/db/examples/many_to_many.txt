@@ -17,7 +17,7 @@ objects, and a ``Publication`` has multiple ``Article`` objects:
     class Publication(models.Model):
         title = models.CharField(max_length=30)
 
-        def __str__(self):
+        def __str__(self):              # __unicode__ on Python 2
             return self.title
 
         class Meta:
@@ -27,7 +27,7 @@ objects, and a ``Publication`` has multiple ``Article`` objects:
         headline = models.CharField(max_length=100)
         publications = models.ManyToManyField(Publication)
 
-        def __str__(self):
+        def __str__(self):              # __unicode__ on Python 2
             return self.headline
 
         class Meta:
@@ -75,7 +75,7 @@ Create another ``Article``, and set it to appear in both ``Publications``::
     >>> a2.publications.add(p1, p2)
     >>> a2.publications.add(p3)
 
-Adding a second time is OK, it will not duplicate the relation::
+Adding a second time is OK::
 
     >>> a2.publications.add(p3)
 

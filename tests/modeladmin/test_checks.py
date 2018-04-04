@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django import forms
 from django.contrib.admin import BooleanFieldListFilter, SimpleListFilter
 from django.contrib.admin.options import VERTICAL, ModelAdmin, TabularInline
@@ -6,18 +8,14 @@ from django.core.checks import Error
 from django.forms.models import BaseModelFormSet
 from django.test import SimpleTestCase
 
-from .models import (
-    Band, Song, User, ValidationTestInlineModel, ValidationTestModel,
-)
+from .models import Band, ValidationTestInlineModel, ValidationTestModel
 
 
 class CheckTestCase(SimpleTestCase):
 
-    def assertIsInvalid(self, model_admin, model, msg, id=None, hint=None, invalid_obj=None, admin_site=None):
-        if admin_site is None:
-            admin_site = AdminSite()
+    def assertIsInvalid(self, model_admin, model, msg, id=None, hint=None, invalid_obj=None):
         invalid_obj = invalid_obj or model_admin
-        admin_obj = model_admin(model, admin_site)
+        admin_obj = model_admin(model, AdminSite())
         self.assertEqual(admin_obj.check(), [Error(msg, hint=hint, obj=invalid_obj, id=id)])
 
     def assertIsInvalidRegexp(self, model_admin, model, msg, id=None, hint=None, invalid_obj=None):
@@ -34,10 +32,8 @@ class CheckTestCase(SimpleTestCase):
         self.assertEqual(error.id, id)
         self.assertRegex(error.msg, msg)
 
-    def assertIsValid(self, model_admin, model, admin_site=None):
-        if admin_site is None:
-            admin_site = AdminSite()
-        admin_obj = model_admin(model, admin_site)
+    def assertIsValid(self, model_admin, model):
+        admin_obj = model_admin(model, AdminSite())
         self.assertEqual(admin_obj.check(), [])
 
 
@@ -204,7 +200,7 @@ class FieldsCheckTests(CheckTestCase):
 class FormCheckTests(CheckTestCase):
 
     def test_invalid_type(self):
-        class FakeForm:
+        class FakeForm(object):
             pass
 
         class TestModelAdmin(ModelAdmin):
@@ -371,17 +367,6 @@ class RadioFieldsCheckTests(CheckTestCase):
 
 
 class PrepopulatedFieldsCheckTests(CheckTestCase):
-
-    def test_not_list_or_tuple(self):
-        class TestModelAdmin(ModelAdmin):
-            prepopulated_fields = {'slug': 'test'}
-
-        self.assertIsInvalid(
-            TestModelAdmin, ValidationTestModel,
-            'The value of \'prepopulated_fields["slug"]\' must be a list '
-            'or tuple.',
-            'admin.E029'
-        )
 
     def test_not_dictionary(self):
         class TestModelAdmin(ModelAdmin):
@@ -595,7 +580,7 @@ class ListFilterTests(CheckTestCase):
         )
 
     def test_not_filter(self):
-        class RandomClass:
+        class RandomClass(object):
             pass
 
         class TestModelAdmin(ModelAdmin):
@@ -607,7 +592,7 @@ class ListFilterTests(CheckTestCase):
             'admin.E113')
 
     def test_not_filter_again(self):
-        class RandomClass:
+        class RandomClass(object):
             pass
 
         class TestModelAdmin(ModelAdmin):
@@ -625,7 +610,7 @@ class ListFilterTests(CheckTestCase):
                 return 'awesomeness'
 
             def get_choices(self, request):
-                return (('bit', 'A bit awesome'), ('very', 'Very awesome'))
+                return (('bit', 'A bit awesome'), ('very', 'Very awesome'), )
 
             def get_queryset(self, cl, qs):
                 return qs
@@ -655,7 +640,7 @@ class ListFilterTests(CheckTestCase):
                 return 'awesomeness'
 
             def get_choices(self, request):
-                return (('bit', 'A bit awesome'), ('very', 'Very awesome'))
+                return (('bit', 'A bit awesome'), ('very', 'Very awesome'), )
 
             def get_queryset(self, cl, qs):
                 return qs
@@ -886,7 +871,7 @@ class InlinesCheckTests(CheckTestCase):
         )
 
     def test_not_model_admin(self):
-        class ValidationTestInline:
+        class ValidationTestInline(object):
             pass
 
         class TestModelAdmin(ModelAdmin):
@@ -911,7 +896,7 @@ class InlinesCheckTests(CheckTestCase):
             'admin.E105')
 
     def test_invalid_model_type(self):
-        class SomethingBad:
+        class SomethingBad(object):
             pass
 
         class ValidationTestInline(TabularInline):
@@ -1051,7 +1036,7 @@ class MinNumCheckTests(CheckTestCase):
 class FormsetCheckTests(CheckTestCase):
 
     def test_invalid_type(self):
-        class FakeFormSet:
+        class FakeFormSet(object):
             pass
 
         class ValidationTestInline(TabularInline):
@@ -1147,112 +1132,3 @@ class ListDisplayEditableTests(CheckTestCase):
             "'list_display_links' is set.",
             id='admin.E124',
         )
-
-    def test_both_list_editable_and_list_display_links(self):
-        class ProductAdmin(ModelAdmin):
-            list_editable = ('name',)
-            list_display = ('name',)
-            list_display_links = ('name',)
-        self.assertIsInvalid(
-            ProductAdmin, ValidationTestModel,
-            "The value of 'name' cannot be in both 'list_editable' and "
-            "'list_display_links'.",
-            id='admin.E123',
-        )
-
-
-class AutocompleteFieldsTests(CheckTestCase):
-    def test_autocomplete_e036(self):
-        class Admin(ModelAdmin):
-            autocomplete_fields = 'name'
-
-        self.assertIsInvalid(
-            Admin, Band,
-            msg="The value of 'autocomplete_fields' must be a list or tuple.",
-            id='admin.E036',
-            invalid_obj=Admin,
-        )
-
-    def test_autocomplete_e037(self):
-        class Admin(ModelAdmin):
-            autocomplete_fields = ('nonexistent',)
-
-        self.assertIsInvalid(
-            Admin, ValidationTestModel,
-            msg=(
-                "The value of 'autocomplete_fields[0]' refers to 'nonexistent', "
-                "which is not an attribute of 'modeladmin.ValidationTestModel'."
-            ),
-            id='admin.E037',
-            invalid_obj=Admin,
-        )
-
-    def test_autocomplete_e38(self):
-        class Admin(ModelAdmin):
-            autocomplete_fields = ('name',)
-
-        self.assertIsInvalid(
-            Admin, ValidationTestModel,
-            msg=(
-                "The value of 'autocomplete_fields[0]' must be a foreign "
-                "key or a many-to-many field."
-            ),
-            id='admin.E038',
-            invalid_obj=Admin,
-        )
-
-    def test_autocomplete_e039(self):
-        class Admin(ModelAdmin):
-            autocomplete_fields = ('band',)
-
-        self.assertIsInvalid(
-            Admin, Song,
-            msg=(
-                'An admin for model "Band" has to be registered '
-                'to be referenced by Admin.autocomplete_fields.'
-            ),
-            id='admin.E039',
-            invalid_obj=Admin,
-        )
-
-    def test_autocomplete_e040(self):
-        class NoSearchFieldsAdmin(ModelAdmin):
-            pass
-
-        class AutocompleteAdmin(ModelAdmin):
-            autocomplete_fields = ('featuring',)
-
-        site = AdminSite()
-        site.register(Band, NoSearchFieldsAdmin)
-        self.assertIsInvalid(
-            AutocompleteAdmin, Song,
-            msg=(
-                'NoSearchFieldsAdmin must define "search_fields", because '
-                'it\'s referenced by AutocompleteAdmin.autocomplete_fields.'
-            ),
-            id='admin.E040',
-            invalid_obj=AutocompleteAdmin,
-            admin_site=site,
-        )
-
-    def test_autocomplete_is_valid(self):
-        class SearchFieldsAdmin(ModelAdmin):
-            search_fields = 'name'
-
-        class AutocompleteAdmin(ModelAdmin):
-            autocomplete_fields = ('featuring',)
-
-        site = AdminSite()
-        site.register(Band, SearchFieldsAdmin)
-        self.assertIsValid(AutocompleteAdmin, Song, admin_site=site)
-
-    def test_autocomplete_is_onetoone(self):
-        class UserAdmin(ModelAdmin):
-            search_fields = ('name',)
-
-        class Admin(ModelAdmin):
-            autocomplete_fields = ('best_friend',)
-
-        site = AdminSite()
-        site.register(User, UserAdmin)
-        self.assertIsValid(Admin, ValidationTestModel, admin_site=site)

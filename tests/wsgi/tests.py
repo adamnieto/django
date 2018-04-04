@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.exceptions import ImproperlyConfigured
 from django.core.servers.basehttp import get_internal_wsgi_application
 from django.core.signals import request_started
@@ -49,7 +51,7 @@ class WSGITest(SimpleTestCase):
         """
         FileResponse uses wsgi.file_wrapper.
         """
-        class FileWrapper:
+        class FileWrapper(object):
             def __init__(self, filelike, blksize=8192):
                 filelike.close()
         application = get_wsgi_application()

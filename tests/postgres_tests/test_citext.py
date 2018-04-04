@@ -46,18 +46,15 @@ class CITextTestCase(PostgreSQLTestCase):
 
     def test_lookups_name_char(self):
         for lookup in self.case_sensitive_lookups:
-            with self.subTest(lookup=lookup):
-                query = {'name__{}'.format(lookup): 'john'}
-                self.assertSequenceEqual(CITestModel.objects.filter(**query), [self.john])
+            query = {'name__{}'.format(lookup): 'john'}
+            self.assertSequenceEqual(CITestModel.objects.filter(**query), [self.john])
 
     def test_lookups_description_text(self):
         for lookup, string in zip(self.case_sensitive_lookups, ('average', 'average joe', 'john', 'Joe.named')):
-            with self.subTest(lookup=lookup, string=string):
-                query = {'description__{}'.format(lookup): string}
-                self.assertSequenceEqual(CITestModel.objects.filter(**query), [self.john])
+            query = {'description__{}'.format(lookup): string}
+            self.assertSequenceEqual(CITestModel.objects.filter(**query), [self.john])
 
     def test_lookups_email(self):
         for lookup, string in zip(self.case_sensitive_lookups, ('john', 'john', 'john.com', 'john.com')):
-            with self.subTest(lookup=lookup, string=string):
-                query = {'email__{}'.format(lookup): string}
-                self.assertSequenceEqual(CITestModel.objects.filter(**query), [self.john])
+            query = {'email__{}'.format(lookup): string}
+            self.assertSequenceEqual(CITestModel.objects.filter(**query), [self.john])

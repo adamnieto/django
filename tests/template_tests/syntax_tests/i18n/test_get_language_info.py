@@ -1,4 +1,6 @@
-from django.template import TemplateSyntaxError
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from django.test import SimpleTestCase
 from django.utils import translation
 
@@ -35,9 +37,3 @@ class I18nGetLanguageInfoTagTests(SimpleTestCase):
         with translation.override('cs'):
             output = self.engine.render_to_string('i18n38')
         self.assertEqual(output, 'de: German/Deutsch/německy bidi=False')
-
-    @setup({'template': '{% load i18n %}''{% get_language_info %}'})
-    def test_no_for_as(self):
-        msg = "'get_language_info' requires 'for string as variable' (got [])"
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
-            self.engine.render_to_string('template')

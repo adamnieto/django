@@ -1,7 +1,11 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from decimal import Decimal, localcontext
 
 from django.template.defaultfilters import floatformat
 from django.test import SimpleTestCase
+from django.utils import six
 from django.utils.safestring import mark_safe
 
 from ..utils import setup
@@ -29,7 +33,6 @@ class FunctionTests(SimpleTestCase):
         self.assertEqual(floatformat(0.07), '0.1')
         self.assertEqual(floatformat(0.007), '0.0')
         self.assertEqual(floatformat(0.0), '0')
-        self.assertEqual(floatformat(7.7, 0), '8')
         self.assertEqual(floatformat(7.7, 3), '7.700')
         self.assertEqual(floatformat(6.000000, 3), '6.000')
         self.assertEqual(floatformat(6.200000, 3), '6.200')
@@ -64,13 +67,16 @@ class FunctionTests(SimpleTestCase):
 
     def test_infinity(self):
         pos_inf = float(1e30000)
+        self.assertEqual(floatformat(pos_inf), six.text_type(pos_inf))
+
         neg_inf = float(-1e30000)
-        self.assertEqual(floatformat(pos_inf), 'inf')
-        self.assertEqual(floatformat(neg_inf), '-inf')
-        self.assertEqual(floatformat(pos_inf / pos_inf), 'nan')
+        self.assertEqual(floatformat(neg_inf), six.text_type(neg_inf))
+
+        nan = pos_inf / pos_inf
+        self.assertEqual(floatformat(nan), six.text_type(nan))
 
     def test_float_dunder_method(self):
-        class FloatWrapper:
+        class FloatWrapper(object):
             def __init__(self, value):
                 self.value = value
 

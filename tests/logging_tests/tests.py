@@ -1,6 +1,8 @@
+# -*- coding:utf-8 -*-
+from __future__ import unicode_literals
+
 import logging
 from contextlib import contextmanager
-from io import StringIO
 
 from admin_scripts.tests import AdminScriptTestCase
 
@@ -8,8 +10,10 @@ from django.conf import settings
 from django.core import mail
 from django.core.files.temp import NamedTemporaryFile
 from django.core.management import color
+from django.db import connection
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.test.utils import LoggingCaptureMixin, patch_logger
+from django.utils import six
 from django.utils.log import (
     DEFAULT_LOGGING, AdminEmailHandler, CallbackFilter, RequireDebugFalse,
     RequireDebugTrue, ServerFormatter,
@@ -63,17 +67,17 @@ class LoggingFiltersTest(SimpleTestCase):
             self.assertIs(filter_.filter("record is not used"), False)
 
 
-class SetupDefaultLoggingMixin:
+class SetupDefaultLoggingMixin(object):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(SetupDefaultLoggingMixin, cls).setUpClass()
         cls._logging = settings.LOGGING
         logging.config.dictConfig(DEFAULT_LOGGING)
 
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()
+        super(SetupDefaultLoggingMixin, cls).tearDownClass()
         logging.config.dictConfig(cls._logging)
 
 
@@ -390,10 +394,8 @@ class SetupConfigureLogging(SimpleTestCase):
     """
     Calling django.setup() initializes the logging configuration.
     """
-    @override_settings(
-        LOGGING_CONFIG='logging_tests.tests.dictConfig',
-        LOGGING=OLD_LOGGING,
-    )
+    @override_settings(LOGGING_CONFIG='logging_tests.tests.dictConfig',
+                       LOGGING=OLD_LOGGING)
     def test_configure_initializes_logging(self):
         from django import setup
         setup()
@@ -448,7 +450,7 @@ args=(sys.stdout,)
 format=%(message)s
 """
         self.temp_file = NamedTemporaryFile()
-        self.temp_file.write(logging_conf.encode())
+        self.temp_file.write(logging_conf.encode('utf-8'))
         self.temp_file.flush()
         sdict = {'LOGGING_CONFIG': '"logging.config.fileConfig"',
                  'LOGGING': 'r"%s"' % self.temp_file.name}
@@ -462,6 +464,26 @@ format=%(message)s
         out, err = self.run_manage(['check'])
         self.assertNoOutput(err)
         self.assertOutput(out, "System check identified no issues (0 silenced).")
+
+
+class SchemaLoggerTests(SimpleTestCase):
+
+    def test_extra_args(self):
+        editor = connection.schema_editor(collect_sql=True)
+        sql = "SELECT * FROM foo WHERE id in (%s, %s)"
+        params = [42, 1337]
+        with patch_logger('django.db.backends.schema', 'debug', log_kwargs=True) as logger:
+            editor.execute(sql, params)
+        self.assertEqual(
+            logger,
+            [(
+                'SELECT * FROM foo WHERE id in (%s, %s); (params [42, 1337])',
+                {'extra': {
+                    'sql': 'SELECT * FROM foo WHERE id in (%s, %s)',
+                    'params': [42, 1337],
+                }},
+            )]
+        )
 
 
 class LogFormattersTests(SimpleTestCase):
@@ -494,7 +516,7 @@ class LogFormattersTests(SimpleTestCase):
         @contextmanager
         def patch_django_server_logger():
             old_stream = logger.handlers[0].stream
-            new_stream = StringIO()
+            new_stream = six.StringIO()
             logger.handlers[0].stream = new_stream
             yield new_stream
             logger.handlers[0].stream = old_stream

@@ -3,6 +3,7 @@ from django.contrib.auth.models import (
     PermissionsMixin, UserManager,
 )
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
 # The custom user uses email as the unique identifier, and requires
@@ -32,6 +33,7 @@ class CustomUserManager(BaseUserManager):
         return u
 
 
+@python_2_unicode_compatible
 class CustomUser(AbstractBaseUser):
     email = models.EmailField(verbose_name='email address', max_length=255, unique=True)
     is_active = models.BooleanField(default=True)
@@ -42,6 +44,12 @@ class CustomUser(AbstractBaseUser):
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['date_of_birth']
+
+    def get_full_name(self):
+        return self.email
+
+    def get_short_name(self):
+        return self.email
 
     def __str__(self):
         return self.email
@@ -68,7 +76,7 @@ class CustomUser(AbstractBaseUser):
         return self.is_admin
 
 
-class RemoveGroupsAndPermissions:
+class RemoveGroupsAndPermissions(object):
     """
     A context manager to temporarily remove the groups and user_permissions M2M
     fields from the AbstractUser class, so they don't clash with the

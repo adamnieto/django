@@ -1,11 +1,17 @@
+# coding: utf-8
+
+from __future__ import unicode_literals
+
 import functools
 import os
 
 from django.template.engine import Engine
 from django.test.utils import override_settings
+from django.utils._os import upath
+from django.utils.encoding import python_2_unicode_compatible
 from django.utils.safestring import mark_safe
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.abspath(upath(__file__)))
 TEMPLATE_DIR = os.path.join(ROOT, 'templates')
 
 
@@ -141,7 +147,7 @@ class OtherClass:
         return 'OtherClass.method'
 
 
-class TestObj:
+class TestObj(object):
     def is_true(self):
         return True
 
@@ -152,29 +158,32 @@ class TestObj:
         raise ShouldNotExecuteException()
 
 
-class SilentGetItemClass:
+class SilentGetItemClass(object):
     def __getitem__(self, key):
         raise SomeException
 
 
-class SilentAttrClass:
+class SilentAttrClass(object):
     def b(self):
         raise SomeException
     b = property(b)
 
 
+@python_2_unicode_compatible
 class UTF8Class:
-    "Class whose __str__ returns non-ASCII data"
+    "Class whose __str__ returns non-ASCII data on Python 2"
     def __str__(self):
         return 'ŠĐĆŽćžšđ'
 
 
-# These two classes are used to test auto-escaping of string output.
+# These two classes are used to test auto-escaping of unicode output.
+@python_2_unicode_compatible
 class UnsafeClass:
     def __str__(self):
         return 'you & me'
 
 
+@python_2_unicode_compatible
 class SafeClass:
     def __str__(self):
         return mark_safe('you &gt; me')

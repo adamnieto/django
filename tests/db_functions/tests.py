@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest import skipIf, skipUnless
@@ -6,17 +8,22 @@ from django.db import connection
 from django.db.models import CharField, TextField, Value as V
 from django.db.models.expressions import RawSQL
 from django.db.models.functions import (
-    Coalesce, Concat, ConcatPair, Greatest, Least, Length, Lower, Now,
-    StrIndex, Substr, Upper,
+    Coalesce, Concat, ConcatPair, Greatest, Least, Length, Lower, Now, Substr,
+    Upper,
 )
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
 from django.utils import timezone
 
 from .models import Article, Author, DecimalModel, Fan
 
+
 lorem_ipsum = """
     Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
     tempor incididunt ut labore et dolore magna aliqua."""
+
+
+def truncate_microseconds(value):
+    return value if connection.features.supports_microsecond_precision else value.replace(microsecond=0)
 
 
 class FunctionTests(TestCase):
@@ -116,7 +123,7 @@ class FunctionTests(TestCase):
         articles = Article.objects.annotate(
             last_updated=Greatest('written', 'published'),
         )
-        self.assertEqual(articles.first().last_updated, now)
+        self.assertEqual(articles.first().last_updated, truncate_microseconds(now))
 
     @skipUnlessDBFeature('greatest_least_ignores_nulls')
     def test_greatest_ignores_null(self):
@@ -169,7 +176,7 @@ class FunctionTests(TestCase):
                 Coalesce('published', past_sql),
             ),
         )
-        self.assertEqual(articles.first().last_updated, now)
+        self.assertEqual(articles.first().last_updated, truncate_microseconds(now))
 
     def test_greatest_all_null(self):
         Article.objects.create(title="Testing with Django", written=timezone.now())
@@ -220,7 +227,7 @@ class FunctionTests(TestCase):
         articles = Article.objects.annotate(
             first_updated=Least('written', 'published'),
         )
-        self.assertEqual(articles.first().first_updated, before)
+        self.assertEqual(articles.first().first_updated, truncate_microseconds(before))
 
     @skipUnlessDBFeature('greatest_least_ignores_nulls')
     def test_least_ignores_null(self):
@@ -273,7 +280,7 @@ class FunctionTests(TestCase):
                 Coalesce('published', future_sql),
             ),
         )
-        self.assertEqual(articles.first().last_updated, now)
+        self.assertEqual(articles.first().last_updated, truncate_microseconds(now))
 
     def test_least_all_null(self):
         Article.objects.create(title="Testing with Django", written=timezone.now())
@@ -509,12 +516,11 @@ class FunctionTests(TestCase):
     def test_substr_with_expressions(self):
         Author.objects.create(name='John Smith', alias='smithj')
         Author.objects.create(name='Rhonda')
-        substr = Substr(Upper('name'), StrIndex('name', V('h')), 5, output_field=CharField())
-        authors = Author.objects.annotate(name_part=substr)
+        authors = Author.objects.annotate(name_part=Substr('name', 5, 3))
         self.assertQuerysetEqual(
             authors.order_by('name'), [
-                'HN SM',
-                'HONDA',
+                ' Sm',
+                'da',
             ],
             lambda a: a.name_part
         )
@@ -580,7 +586,7 @@ class FunctionTests(TestCase):
 
     def test_length_transform(self):
         try:
-            CharField.register_lookup(Length)
+            CharField.register_lookup(Length, 'length')
             Author.objects.create(name='John Smith', alias='smithj')
             Author.objects.create(name='Rhonda')
             authors = Author.objects.filter(name__length__gt=7)
@@ -591,11 +597,11 @@ class FunctionTests(TestCase):
                 lambda a: a.name
             )
         finally:
-            CharField._unregister_lookup(Length)
+            CharField._unregister_lookup(Length, 'length')
 
     def test_lower_transform(self):
         try:
-            CharField.register_lookup(Lower)
+            CharField.register_lookup(Lower, 'lower')
             Author.objects.create(name='John Smith', alias='smithj')
             Author.objects.create(name='Rhonda')
             authors = Author.objects.filter(name__lower__exact='john smith')
@@ -606,11 +612,11 @@ class FunctionTests(TestCase):
                 lambda a: a.name
             )
         finally:
-            CharField._unregister_lookup(Lower)
+            CharField._unregister_lookup(Lower, 'lower')
 
     def test_upper_transform(self):
         try:
-            CharField.register_lookup(Upper)
+            CharField.register_lookup(Upper, 'upper')
             Author.objects.create(name='John Smith', alias='smithj')
             Author.objects.create(name='Rhonda')
             authors = Author.objects.filter(name__upper__exact='JOHN SMITH')
@@ -621,14 +627,14 @@ class FunctionTests(TestCase):
                 lambda a: a.name
             )
         finally:
-            CharField._unregister_lookup(Upper)
+            CharField._unregister_lookup(Upper, 'upper')
 
     def test_func_transform_bilateral(self):
         class UpperBilateral(Upper):
             bilateral = True
 
         try:
-            CharField.register_lookup(UpperBilateral)
+            CharField.register_lookup(UpperBilateral, 'upper')
             Author.objects.create(name='John Smith', alias='smithj')
             Author.objects.create(name='Rhonda')
             authors = Author.objects.filter(name__upper__exact='john smith')
@@ -639,14 +645,14 @@ class FunctionTests(TestCase):
                 lambda a: a.name
             )
         finally:
-            CharField._unregister_lookup(UpperBilateral)
+            CharField._unregister_lookup(UpperBilateral, 'upper')
 
     def test_func_transform_bilateral_multivalue(self):
         class UpperBilateral(Upper):
             bilateral = True
 
         try:
-            CharField.register_lookup(UpperBilateral)
+            CharField.register_lookup(UpperBilateral, 'upper')
             Author.objects.create(name='John Smith', alias='smithj')
             Author.objects.create(name='Rhonda')
             authors = Author.objects.filter(name__upper__in=['john smith', 'rhonda'])
@@ -658,7 +664,7 @@ class FunctionTests(TestCase):
                 lambda a: a.name
             )
         finally:
-            CharField._unregister_lookup(UpperBilateral)
+            CharField._unregister_lookup(UpperBilateral, 'upper')
 
     def test_function_as_filter(self):
         Author.objects.create(name='John Smith', alias='SMITHJ')

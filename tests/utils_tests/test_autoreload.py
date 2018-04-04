@@ -1,20 +1,23 @@
+from __future__ import unicode_literals
+
 import gettext
 import os
 import shutil
+import sys
 import tempfile
+import unittest
 from importlib import import_module
-from unittest import mock
-
-import _thread
 
 from django import conf
 from django.contrib import admin
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, mock, override_settings
 from django.test.utils import extend_sys_path
-from django.utils import autoreload
+from django.utils import autoreload, six
+from django.utils._os import npath, upath
+from django.utils.six.moves import _thread
 from django.utils.translation import trans_real
 
-LOCALE_PATH = os.path.join(os.path.dirname(__file__), 'locale')
+LOCALE_PATH = os.path.join(os.path.dirname(upath(__file__)), 'locale')
 
 
 class TestFilenameGenerator(SimpleTestCase):
@@ -26,29 +29,29 @@ class TestFilenameGenerator(SimpleTestCase):
     def assertFileFound(self, filename):
         self.clear_autoreload_caches()
         # Test uncached access
-        self.assertIn(filename, autoreload.gen_filenames())
+        self.assertIn(npath(filename), autoreload.gen_filenames())
         # Test cached access
-        self.assertIn(filename, autoreload.gen_filenames())
+        self.assertIn(npath(filename), autoreload.gen_filenames())
 
     def assertFileNotFound(self, filename):
         self.clear_autoreload_caches()
         # Test uncached access
-        self.assertNotIn(filename, autoreload.gen_filenames())
+        self.assertNotIn(npath(filename), autoreload.gen_filenames())
         # Test cached access
-        self.assertNotIn(filename, autoreload.gen_filenames())
+        self.assertNotIn(npath(filename), autoreload.gen_filenames())
 
     def assertFileFoundOnlyNew(self, filename):
         self.clear_autoreload_caches()
         # Test uncached access
-        self.assertIn(filename, autoreload.gen_filenames(only_new=True))
+        self.assertIn(npath(filename), autoreload.gen_filenames(only_new=True))
         # Test cached access
-        self.assertNotIn(filename, autoreload.gen_filenames(only_new=True))
+        self.assertNotIn(npath(filename), autoreload.gen_filenames(only_new=True))
 
     def test_django_locales(self):
         """
         gen_filenames() yields the built-in Django locale files.
         """
-        django_dir = os.path.join(os.path.dirname(conf.__file__), 'locale')
+        django_dir = os.path.join(os.path.dirname(upath(conf.__file__)), 'locale')
         django_mo = os.path.join(django_dir, 'nl', 'LC_MESSAGES', 'django.mo')
         self.assertFileFound(django_mo)
 
@@ -67,7 +70,7 @@ class TestFilenameGenerator(SimpleTestCase):
         """
         old_cwd = os.getcwd()
         os.chdir(os.path.dirname(__file__))
-        current_dir = os.path.join(os.path.dirname(__file__), 'locale')
+        current_dir = os.path.join(os.path.dirname(upath(__file__)), 'locale')
         current_dir_mo = os.path.join(current_dir, 'nl', 'LC_MESSAGES', 'django.mo')
         try:
             self.assertFileFound(current_dir_mo)
@@ -79,7 +82,7 @@ class TestFilenameGenerator(SimpleTestCase):
         """
         gen_filenames() also yields from locale dirs in installed apps.
         """
-        admin_dir = os.path.join(os.path.dirname(admin.__file__), 'locale')
+        admin_dir = os.path.join(os.path.dirname(upath(admin.__file__)), 'locale')
         admin_mo = os.path.join(admin_dir, 'nl', 'LC_MESSAGES', 'django.mo')
         self.assertFileFound(admin_mo)
 
@@ -89,7 +92,7 @@ class TestFilenameGenerator(SimpleTestCase):
         If i18n machinery is disabled, there is no need for watching the
         locale files.
         """
-        django_dir = os.path.join(os.path.dirname(conf.__file__), 'locale')
+        django_dir = os.path.join(os.path.dirname(upath(conf.__file__)), 'locale')
         django_mo = os.path.join(django_dir, 'nl', 'LC_MESSAGES', 'django.mo')
         self.assertFileNotFound(django_mo)
 
@@ -122,7 +125,7 @@ class TestFilenameGenerator(SimpleTestCase):
         with extend_sys_path(dirname):
             import_module('test_only_new_module')
         filenames = set(autoreload.gen_filenames(only_new=True))
-        self.assertEqual(filenames, {filename})
+        self.assertEqual(filenames, {npath(filename)})
 
     def test_deleted_removed(self):
         """
@@ -254,35 +257,43 @@ class ResetTranslationsTests(SimpleTestCase):
         self.assertIsInstance(trans_real._active, _thread._local)
 
 
-class RestartWithReloaderTests(SimpleTestCase):
-    executable = '/usr/bin/python'
+class TestRestartWithReloader(SimpleTestCase):
 
-    def patch_autoreload(self, argv):
-        patch_call = mock.patch('django.utils.autoreload.subprocess.call', return_value=0)
-        patches = [
-            mock.patch('django.utils.autoreload.sys.argv', argv),
-            mock.patch('django.utils.autoreload.sys.executable', self.executable),
-            mock.patch('django.utils.autoreload.sys.warnoptions', ['all']),
-        ]
-        for p in patches:
-            p.start()
-            self.addCleanup(p.stop)
-        mock_call = patch_call.start()
-        self.addCleanup(patch_call.stop)
-        return mock_call
+    def setUp(self):
+        self._orig_environ = os.environ.copy()
 
-    def test_manage_py(self):
-        argv = ['./manage.py', 'runserver']
-        mock_call = self.patch_autoreload(argv)
-        autoreload.restart_with_reloader()
-        self.assertEqual(mock_call.call_count, 1)
-        self.assertEqual(mock_call.call_args[0][0], [self.executable, '-Wall'] + argv)
+    def tearDown(self):
+        os.environ.clear()
+        os.environ.update(self._orig_environ)
 
-    def test_python_m_django(self):
-        main = '/usr/lib/pythonX.Y/site-packages/django/__main__.py'
-        argv = [main, 'runserver']
-        mock_call = self.patch_autoreload(argv)
-        with mock.patch('django.__main__.__file__', main):
+    def test_environment(self):
+        """"
+        With Python 2 on Windows, restart_with_reloader() coerces environment
+        variables to str to avoid "TypeError: environment can only contain
+        strings" in Python's subprocess.py.
+        """
+        # With unicode_literals, these values are unicode.
+        os.environ['SPAM'] = 'spam'
+        with mock.patch.object(sys, 'argv', ['-c', 'pass']):
             autoreload.restart_with_reloader()
-            self.assertEqual(mock_call.call_count, 1)
-            self.assertEqual(mock_call.call_args[0][0], [self.executable, '-Wall', '-m', 'django'] + argv[1:])
+
+    @unittest.skipUnless(six.PY2 and sys.platform == 'win32', 'This is a Python 2 + Windows-specific issue.')
+    def test_environment_decoding(self):
+        """The system encoding is used for decoding."""
+        os.environ['SPAM'] = 'spam'
+        os.environ['EGGS'] = b'\xc6u vi komprenas?'
+        with mock.patch('locale.getdefaultlocale') as default_locale:
+            # Latin-3 is the correct mapping.
+            default_locale.return_value = ('eo', 'latin3')
+            with mock.patch.object(sys, 'argv', ['-c', 'pass']):
+                autoreload.restart_with_reloader()
+            # CP1252 interprets latin3's C circumflex as AE ligature.
+            # It's incorrect but doesn't raise an error.
+            default_locale.return_value = ('en_US', 'cp1252')
+            with mock.patch.object(sys, 'argv', ['-c', 'pass']):
+                autoreload.restart_with_reloader()
+            # Interpreting the string as UTF-8 is fatal.
+            with self.assertRaises(UnicodeDecodeError):
+                default_locale.return_value = ('en_US', 'utf-8')
+                with mock.patch.object(sys, 'argv', ['-c', 'pass']):
+                    autoreload.restart_with_reloader()

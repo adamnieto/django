@@ -4,12 +4,14 @@ from django.contrib.contenttypes.fields import (
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models.deletion import ProtectedError
+from django.utils.encoding import python_2_unicode_compatible
 
 __all__ = ('Link', 'Place', 'Restaurant', 'Person', 'Address',
            'CharLink', 'TextLink', 'OddRelation1', 'OddRelation2',
            'Contact', 'Organization', 'Note', 'Company')
 
 
+@python_2_unicode_compatible
 class Link(models.Model):
     content_type = models.ForeignKey(ContentType, models.CASCADE)
     object_id = models.PositiveIntegerField()
@@ -24,25 +26,29 @@ class LinkProxy(Link):
         proxy = True
 
 
+@python_2_unicode_compatible
 class Place(models.Model):
     name = models.CharField(max_length=100)
-    links = GenericRelation(Link, related_query_name='places')
+    links = GenericRelation(Link)
     link_proxy = GenericRelation(LinkProxy)
 
     def __str__(self):
         return "Place: %s" % self.name
 
 
+@python_2_unicode_compatible
 class Restaurant(Place):
     def __str__(self):
         return "Restaurant: %s" % self.name
 
 
+@python_2_unicode_compatible
 class Cafe(Restaurant):
     def __str__(self):
         return "Cafe: %s" % self.name
 
 
+@python_2_unicode_compatible
 class Address(models.Model):
     street = models.CharField(max_length=80)
     city = models.CharField(max_length=50)
@@ -56,6 +62,7 @@ class Address(models.Model):
         return '%s %s, %s %s' % (self.street, self.city, self.state, self.zipcode)
 
 
+@python_2_unicode_compatible
 class Person(models.Model):
     account = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=128)
@@ -104,6 +111,7 @@ class Organization(models.Model):
     contacts = models.ManyToManyField(Contact, related_name='organizations')
 
 
+@python_2_unicode_compatible
 class Company(models.Model):
     name = models.CharField(max_length=100)
     links = GenericRelation(Link)
@@ -117,6 +125,7 @@ class Developer(models.Model):
     name = models.CharField(max_length=15)
 
 
+@python_2_unicode_compatible
 class Team(models.Model):
     name = models.CharField(max_length=15)
     members = models.ManyToManyField(Developer)
@@ -132,8 +141,9 @@ class Guild(models.Model):
     name = models.CharField(max_length=15)
     members = models.ManyToManyField(Developer)
 
-    def __bool__(self):
-        return False
+    def __nonzero__(self):
+
+        return self.members.count()
 
 
 class Tag(models.Model):
@@ -149,7 +159,7 @@ class Board(models.Model):
 
 class SpecialGenericRelation(GenericRelation):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(SpecialGenericRelation, self).__init__(*args, **kwargs)
         self.editable = True
         self.save_form_data_calls = 0
 
@@ -169,7 +179,7 @@ class HasLinkThing(HasLinks):
 
 
 class A(models.Model):
-    flag = models.BooleanField(null=True)
+    flag = models.NullBooleanField()
     content_type = models.ForeignKey(ContentType, models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')

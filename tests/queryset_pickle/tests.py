@@ -1,8 +1,12 @@
+from __future__ import unicode_literals
+
 import datetime
 import pickle
+import unittest
 
 from django.db import models
 from django.test import TestCase
+from django.utils import six
 from django.utils.version import get_version
 
 from .models import Container, Event, Group, Happening, M2MModel
@@ -31,6 +35,7 @@ class PickleabilityTestCase(TestCase):
     def test_standalone_method_as_default(self):
         self.assert_pickles(Happening.objects.filter(number1=1))
 
+    @unittest.skipIf(six.PY2, "Field doesn't exist on Python 2.")
     def test_staticmethod_as_default(self):
         self.assert_pickles(Happening.objects.filter(number2=1))
 
@@ -46,26 +51,6 @@ class PickleabilityTestCase(TestCase):
         # can't just use assertEqual(original, unpickled)
         self.assertEqual(original.__class__, unpickled.__class__)
         self.assertEqual(original.args, unpickled.args)
-
-    def test_doesnotexist_class(self):
-        klass = Event.DoesNotExist
-        self.assertIs(pickle.loads(pickle.dumps(klass)), klass)
-
-    def test_multipleobjectsreturned_class(self):
-        klass = Event.MultipleObjectsReturned
-        self.assertIs(pickle.loads(pickle.dumps(klass)), klass)
-
-    def test_forward_relatedobjectdoesnotexist_class(self):
-        # ForwardManyToOneDescriptor
-        klass = Event.group.RelatedObjectDoesNotExist
-        self.assertIs(pickle.loads(pickle.dumps(klass)), klass)
-        # ForwardOneToOneDescriptor
-        klass = Happening.event.RelatedObjectDoesNotExist
-        self.assertIs(pickle.loads(pickle.dumps(klass)), klass)
-
-    def test_reverse_one_to_one_relatedobjectdoesnotexist_class(self):
-        klass = Event.happening.RelatedObjectDoesNotExist
-        self.assertIs(pickle.loads(pickle.dumps(klass)), klass)
 
     def test_manager_pickle(self):
         pickle.loads(pickle.dumps(Happening.objects))
@@ -102,7 +87,8 @@ class PickleabilityTestCase(TestCase):
     def test_model_pickle_dynamic(self):
         class Meta:
             proxy = True
-        dynclass = type("DynamicEventSubclass", (Event,), {'Meta': Meta, '__module__': Event.__module__})
+        dynclass = type(str("DynamicEventSubclass"), (Event, ),
+                        {'Meta': Meta, '__module__': Event.__module__})
         original = dynclass(pk=1)
         dumped = pickle.dumps(original)
         reloaded = pickle.loads(dumped)

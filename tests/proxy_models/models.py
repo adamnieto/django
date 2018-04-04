@@ -5,20 +5,22 @@ than using a new table of their own. This allows them to act as simple proxies,
 providing a modified interface to the data from the base class.
 """
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 # A couple of managers for testing managing overriding in proxy model cases.
 
 
 class PersonManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().exclude(name="fred")
+        return super(PersonManager, self).get_queryset().exclude(name="fred")
 
 
 class SubManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().exclude(name="wilma")
+        return super(SubManager, self).get_queryset().exclude(name="wilma")
 
 
+@python_2_unicode_compatible
 class Person(models.Model):
     """
     A simple concrete base class.
@@ -69,7 +71,7 @@ class ManagerMixin(models.Model):
 
 class OtherPerson(Person, ManagerMixin):
     """
-    A class with the default manager from Person, plus a secondary manager.
+    A class with the default manager from Person, plus an secondary manager.
     """
     class Meta:
         proxy = True
@@ -98,6 +100,7 @@ class LowerStatusPerson(MyPersonProxy):
     objects = models.Manager()
 
 
+@python_2_unicode_compatible
 class User(models.Model):
     name = models.CharField(max_length=100)
 
@@ -131,6 +134,7 @@ class Country(models.Model):
     name = models.CharField(max_length=50)
 
 
+@python_2_unicode_compatible
 class State(models.Model):
     name = models.CharField(max_length=50)
     country = models.ForeignKey(Country, models.CASCADE)
@@ -147,6 +151,7 @@ class StateProxy(State):
 # and select_related, even when mixed with model inheritance
 
 
+@python_2_unicode_compatible
 class BaseUser(models.Model):
     name = models.CharField(max_length=255)
 
@@ -163,6 +168,7 @@ class ProxyTrackerUser(TrackerUser):
         proxy = True
 
 
+@python_2_unicode_compatible
 class Issue(models.Model):
     summary = models.CharField(max_length=255)
     assignee = models.ForeignKey(ProxyTrackerUser, models.CASCADE, related_name='issues')

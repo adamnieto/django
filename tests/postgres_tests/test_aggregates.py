@@ -46,18 +46,6 @@ class TestGeneralAggregate(PostgreSQLTestCase):
         values = AggregateTestModel.objects.aggregate(arrayagg=ArrayAgg('boolean_field'))
         self.assertEqual(values, {'arrayagg': []})
 
-    def test_array_agg_lookups(self):
-        aggr1 = AggregateTestModel.objects.create()
-        aggr2 = AggregateTestModel.objects.create()
-        StatTestModel.objects.create(related_field=aggr1, int1=1, int2=0)
-        StatTestModel.objects.create(related_field=aggr1, int1=2, int2=0)
-        StatTestModel.objects.create(related_field=aggr2, int1=3, int2=0)
-        StatTestModel.objects.create(related_field=aggr2, int1=4, int2=0)
-        qs = StatTestModel.objects.values('related_field').annotate(
-            array=ArrayAgg('int1')
-        ).filter(array__overlap=[2]).values_list('array', flat=True)
-        self.assertCountEqual(qs.get(), [1, 2])
-
     def test_bit_and_general(self):
         values = AggregateTestModel.objects.filter(
             integer_field__in=[0, 1]).aggregate(bitand=BitAnd('integer_field'))
@@ -140,7 +128,7 @@ class TestGeneralAggregate(PostgreSQLTestCase):
         self.assertEqual(values, json.loads('{"jsonagg": []}'))
 
 
-class TestAggregateDistinct(PostgreSQLTestCase):
+class TestStringAggregateDistinct(PostgreSQLTestCase):
     @classmethod
     def setUpTestData(cls):
         AggregateTestModel.objects.create(char_field='Foo')
@@ -156,14 +144,6 @@ class TestAggregateDistinct(PostgreSQLTestCase):
         values = AggregateTestModel.objects.aggregate(stringagg=StringAgg('char_field', delimiter=' ', distinct=True))
         self.assertEqual(values['stringagg'].count('Foo'), 1)
         self.assertEqual(values['stringagg'].count('Bar'), 1)
-
-    def test_array_agg_distinct_false(self):
-        values = AggregateTestModel.objects.aggregate(arrayagg=ArrayAgg('char_field', distinct=False))
-        self.assertEqual(sorted(values['arrayagg']), ['Bar', 'Foo', 'Foo'])
-
-    def test_array_agg_distinct_true(self):
-        values = AggregateTestModel.objects.aggregate(arrayagg=ArrayAgg('char_field', distinct=True))
-        self.assertEqual(sorted(values['arrayagg']), ['Bar', 'Foo'])
 
 
 class TestStatisticsAggregate(PostgreSQLTestCase):

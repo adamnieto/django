@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.forms import (
     CharField, HiddenInput, PasswordInput, Textarea, TextInput,
     ValidationError,
@@ -73,8 +75,7 @@ class CharFieldTest(FormFieldAssertionsMixin, SimpleTestCase):
             CharField(min_length='a')
         with self.assertRaises(ValueError):
             CharField(max_length='a')
-        msg = '__init__() takes 1 positional argument but 2 were given'
-        with self.assertRaisesMessage(TypeError, msg):
+        with self.assertRaises(ValueError):
             CharField('a')
 
     def test_charfield_widget_attrs(self):
@@ -145,10 +146,4 @@ class CharFieldTest(FormFieldAssertionsMixin, SimpleTestCase):
 
     def test_charfield_disabled(self):
         f = CharField(disabled=True)
-        self.assertWidgetRendersTo(f, '<input type="text" name="f" id="id_f" disabled required>')
-
-    def test_null_characters_prohibited(self):
-        f = CharField()
-        msg = 'Null characters are not allowed.'
-        with self.assertRaisesMessage(ValidationError, msg):
-            f.clean('\x00something')
+        self.assertWidgetRendersTo(f, '<input type="text" name="f" id="id_f" disabled required />')

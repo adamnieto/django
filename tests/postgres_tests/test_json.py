@@ -1,15 +1,17 @@
+from __future__ import unicode_literals
+
 import datetime
 import uuid
 from decimal import Decimal
 
-from django.core import checks, exceptions, serializers
+from django.core import exceptions, serializers
 from django.core.serializers.json import DjangoJSONEncoder
 from django.forms import CharField, Form, widgets
-from django.test.utils import isolate_apps
+from django.test import skipUnlessDBFeature
 from django.utils.html import escape
 
 from . import PostgreSQLTestCase
-from .models import JSONModel, PostgreSQLModel
+from .models import JSONModel
 
 try:
     from django.contrib.postgres import forms
@@ -18,6 +20,7 @@ except ImportError:
     pass
 
 
+@skipUnlessDBFeature('has_jsonb_datatype')
 class TestSaveLoad(PostgreSQLTestCase):
     def test_null(self):
         instance = JSONModel()
@@ -91,6 +94,7 @@ class TestSaveLoad(PostgreSQLTestCase):
         self.assertEqual(loaded.field_custom, obj_after)
 
 
+@skipUnlessDBFeature('has_jsonb_datatype')
 class TestQuerying(PostgreSQLTestCase):
     @classmethod
     def setUpTestData(cls):
@@ -140,31 +144,6 @@ class TestQuerying(PostgreSQLTestCase):
             JSONModel.objects.filter(field__isnull=True),
             [self.objs[0]]
         )
-
-    def test_ordering_by_transform(self):
-        objs = [
-            JSONModel.objects.create(field={'ord': 93, 'name': 'bar'}),
-            JSONModel.objects.create(field={'ord': 22.1, 'name': 'foo'}),
-            JSONModel.objects.create(field={'ord': -1, 'name': 'baz'}),
-            JSONModel.objects.create(field={'ord': 21.931902, 'name': 'spam'}),
-            JSONModel.objects.create(field={'ord': -100291029, 'name': 'eggs'}),
-        ]
-        query = JSONModel.objects.filter(field__name__isnull=False).order_by('field__ord')
-        self.assertSequenceEqual(query, [objs[4], objs[2], objs[3], objs[1], objs[0]])
-
-    def test_deep_values(self):
-        query = JSONModel.objects.values_list('field__k__l')
-        self.assertSequenceEqual(
-            query,
-            [
-                (None,), (None,), (None,), (None,), (None,), (None,),
-                (None,), (None,), ('m',), (None,), (None,), (None,),
-            ]
-        )
-
-    def test_deep_distinct(self):
-        query = JSONModel.objects.distinct('field__k__l').values_list('field__k__l')
-        self.assertSequenceEqual(query, [('m',), (None,)])
 
     def test_isnull_key(self):
         # key__isnull works the same as has_key='key'.
@@ -285,66 +264,21 @@ class TestQuerying(PostgreSQLTestCase):
         self.assertTrue(JSONModel.objects.filter(field__foo__iregex=r'^bAr$').exists())
 
 
-@isolate_apps('postgres_tests')
-class TestChecks(PostgreSQLTestCase):
-
-    def test_invalid_default(self):
-        class MyModel(PostgreSQLModel):
-            field = JSONField(default={})
-
-        model = MyModel()
-        self.assertEqual(model.check(), [
-            checks.Warning(
-                msg=(
-                    "JSONField default should be a callable instead of an "
-                    "instance so that it's not shared between all field "
-                    "instances."
-                ),
-                hint='Use a callable instead, e.g., use `dict` instead of `{}`.',
-                obj=MyModel._meta.get_field('field'),
-                id='postgres.E003',
-            )
-        ])
-
-    def test_valid_default(self):
-        class MyModel(PostgreSQLModel):
-            field = JSONField(default=dict)
-
-        model = MyModel()
-        self.assertEqual(model.check(), [])
-
-    def test_valid_default_none(self):
-        class MyModel(PostgreSQLModel):
-            field = JSONField(default=None)
-
-        model = MyModel()
-        self.assertEqual(model.check(), [])
-
-
+@skipUnlessDBFeature('has_jsonb_datatype')
 class TestSerialization(PostgreSQLTestCase):
     test_data = (
-        '[{"fields": {"field": %s, "field_custom": null}, '
+        '[{"fields": {"field": {"a": "b", "c": null}, "field_custom": null}, '
         '"model": "postgres_tests.jsonmodel", "pk": null}]'
-    )
-    test_values = (
-        # (Python value, serialized value),
-        ({'a': 'b', 'c': None}, '{"a": "b", "c": null}'),
-        ('abc', '"abc"'),
-        ('{"a": "a"}', '"{\\"a\\": \\"a\\"}"'),
     )
 
     def test_dumping(self):
-        for value, serialized in self.test_values:
-            with self.subTest(value=value):
-                instance = JSONModel(field=value)
-                data = serializers.serialize('json', [instance])
-                self.assertJSONEqual(data, self.test_data % serialized)
+        instance = JSONModel(field={'a': 'b', 'c': None})
+        data = serializers.serialize('json', [instance])
+        self.assertJSONEqual(data, self.test_data)
 
     def test_loading(self):
-        for value, serialized in self.test_values:
-            with self.subTest(value=value):
-                instance = list(serializers.deserialize('json', self.test_data % serialized))[0].object
-                self.assertEqual(instance.field, value)
+        instance = list(serializers.deserialize('json', self.test_data))[0].object
+        self.assertEqual(instance.field, {'a': 'b', 'c': None})
 
 
 class TestValidation(PostgreSQLTestCase):
@@ -445,8 +379,3 @@ class TestFormField(PostgreSQLTestCase):
         for json_string in tests:
             val = field.clean(json_string)
             self.assertEqual(field.clean(val), val)
-
-    def test_has_changed(self):
-        field = forms.JSONField()
-        self.assertIs(field.has_changed({'a': True}, '{"a": 1}'), True)
-        self.assertIs(field.has_changed({'a': 1, 'b': 2}, '{"b": 2, "a": 1}'), False)

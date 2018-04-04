@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class Author(models.Model):
     name = models.CharField(max_length=100)
     age = models.IntegerField()
@@ -10,6 +13,7 @@ class Author(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Publisher(models.Model):
     name = models.CharField(max_length=255)
     num_awards = models.IntegerField()
@@ -19,6 +23,7 @@ class Publisher(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Book(models.Model):
     isbn = models.CharField(max_length=9)
     name = models.CharField(max_length=255)
@@ -34,6 +39,7 @@ class Book(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Store(models.Model):
     name = models.CharField(max_length=255)
     books = models.ManyToManyField(Book)

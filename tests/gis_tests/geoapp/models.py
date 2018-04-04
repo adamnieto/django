@@ -1,10 +1,14 @@
 from django.contrib.gis.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 from ..utils import gisfield_may_be_null
 
 
+@python_2_unicode_compatible
 class NamedModel(models.Model):
     name = models.CharField(max_length=30)
+
+    objects = models.GeoManager()
 
     class Meta:
         abstract = True
@@ -81,16 +85,10 @@ class NonConcreteField(models.IntegerField):
         return None
 
     def get_attname_column(self):
-        attname, column = super().get_attname_column()
+        attname, column = super(NonConcreteField, self).get_attname_column()
         return attname, None
 
 
 class NonConcreteModel(NamedModel):
     non_concrete = NonConcreteField()
     point = models.PointField(geography=True)
-
-
-class ManyPointModel(NamedModel):
-    point1 = models.PointField()
-    point2 = models.PointField()
-    point3 = models.PointField(srid=3857)

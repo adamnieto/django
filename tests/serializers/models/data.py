@@ -4,6 +4,8 @@ The following classes are for testing basic data marshalling, including
 NULL values, where allowed.
 The basic idea is to have a model for each Django data type.
 """
+from __future__ import unicode_literals
+
 from django.contrib.contenttypes.fields import (
     GenericForeignKey, GenericRelation,
 )
@@ -18,7 +20,7 @@ class BinaryData(models.Model):
 
 
 class BooleanData(models.Model):
-    data = models.BooleanField(default=False, null=True)
+    data = models.BooleanField(default=False)
 
 
 class CharData(models.Model):
@@ -188,13 +190,11 @@ class BooleanPKData(models.Model):
 class CharPKData(models.Model):
     data = models.CharField(max_length=30, primary_key=True)
 
+# class DatePKData(models.Model):
+#    data = models.DateField(primary_key=True)
 
-class DatePKData(models.Model):
-    data = models.DateField(primary_key=True)
-
-
-class DateTimePKData(models.Model):
-    data = models.DateTimeField(primary_key=True)
+# class DateTimePKData(models.Model):
+#    data = models.DateTimeField(primary_key=True)
 
 
 class DecimalPKData(models.Model):
@@ -225,6 +225,10 @@ class IntegerPKData(models.Model):
 
 class GenericIPAddressPKData(models.Model):
     data = models.GenericIPAddressField(primary_key=True)
+
+# This is just a Boolean field with null=True, and we can't test a PK value of NULL.
+# class NullBooleanPKData(models.Model):
+#     data = models.NullBooleanField(primary_key=True)
 
 
 class PositiveIntegerPKData(models.Model):
@@ -275,7 +279,7 @@ class ModifyingSaveData(models.Model):
         (#4459).
         """
         self.data = 666
-        super().save(*args, **kwargs)
+        super(ModifyingSaveData, self).save(*args, **kwargs)
 
 # Tests for serialization of models using inheritance.
 # Regression for #7202, #7350

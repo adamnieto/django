@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import os
 from threading import local
 
@@ -17,20 +20,20 @@ class I18nBlockTransTagTests(SimpleTestCase):
     @setup({'i18n03': '{% load i18n %}{% blocktrans %}{{ anton }}{% endblocktrans %}'})
     def test_i18n03(self):
         """simple translation of a variable"""
-        output = self.engine.render_to_string('i18n03', {'anton': 'Å'})
+        output = self.engine.render_to_string('i18n03', {'anton': b'\xc3\x85'})
         self.assertEqual(output, 'Å')
 
     @setup({'i18n04': '{% load i18n %}{% blocktrans with berta=anton|lower %}{{ berta }}{% endblocktrans %}'})
     def test_i18n04(self):
         """simple translation of a variable and filter"""
-        output = self.engine.render_to_string('i18n04', {'anton': 'Å'})
+        output = self.engine.render_to_string('i18n04', {'anton': b'\xc3\x85'})
         self.assertEqual(output, 'å')
 
     @setup({'legacyi18n04': '{% load i18n %}'
                             '{% blocktrans with anton|lower as berta %}{{ berta }}{% endblocktrans %}'})
     def test_legacyi18n04(self):
         """simple translation of a variable and filter"""
-        output = self.engine.render_to_string('legacyi18n04', {'anton': 'Å'})
+        output = self.engine.render_to_string('legacyi18n04', {'anton': b'\xc3\x85'})
         self.assertEqual(output, 'å')
 
     @setup({'i18n05': '{% load i18n %}{% blocktrans %}xxx{{ anton }}xxx{% endblocktrans %}'})
@@ -233,45 +236,6 @@ class I18nBlockTransTagTests(SimpleTestCase):
         output = self.engine.render_to_string('template')
         self.assertEqual(output, '%s')
 
-    @setup({'template': '{% load i18n %}{% blocktrans %}{% block b %} {% endblock %}{% endblocktrans %}'})
-    def test_with_block(self):
-        msg = "'blocktrans' doesn't allow other block tags (seen 'block b') inside it"
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
-            self.engine.render_to_string('template')
-
-    @setup({'template': '{% load i18n %}{% blocktrans %}{% for b in [1, 2, 3] %} {% endfor %}{% endblocktrans %}'})
-    def test_with_for(self):
-        msg = "'blocktrans' doesn't allow other block tags (seen 'for b in [1, 2, 3]') inside it"
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
-            self.engine.render_to_string('template')
-
-    @setup({'template': '{% load i18n %}{% blocktrans with foo=bar with %}{{ foo }}{% endblocktrans %}'})
-    def test_variable_twice(self):
-        with self.assertRaisesMessage(TemplateSyntaxError, "The 'with' option was specified more than once"):
-            self.engine.render_to_string('template', {'foo': 'bar'})
-
-    @setup({'template': '{% load i18n %}{% blocktrans with %}{% endblocktrans %}'})
-    def test_no_args_with(self):
-        msg = '"with" in \'blocktrans\' tag needs at least one keyword argument.'
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
-            self.engine.render_to_string('template')
-
-    @setup({'template': '{% load i18n %}{% blocktrans count a %}{% endblocktrans %}'})
-    def test_count(self):
-        msg = '"count" in \'blocktrans\' tag expected exactly one keyword argument.'
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
-            self.engine.render_to_string('template', {'a': [1, 2, 3]})
-
-    @setup({'template': (
-        '{% load i18n %}{% blocktrans count count=var|length %}'
-        'There is {{ count }} object. {% block a %} {% endblock %}'
-        '{% endblocktrans %}'
-    )})
-    def test_plural_bad_syntax(self):
-        msg = "'blocktrans' doesn't allow other block tags inside it"
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
-            self.engine.render_to_string('template', {'var': [1, 2, 3]})
-
 
 class TranslationBlockTransTagTests(SimpleTestCase):
 
@@ -371,13 +335,11 @@ class TranslationBlockTransTagTests(SimpleTestCase):
             self.assertEqual(rendered, '2 andere Super-Ergebnisse')
 
             # Misuses
-            msg = "Unknown argument for 'blocktrans' tag: %r."
-            with self.assertRaisesMessage(TemplateSyntaxError, msg % 'month="May"'):
+            with self.assertRaises(TemplateSyntaxError):
                 Template('{% load i18n %}{% blocktrans context with month="May" %}{{ month }}{% endblocktrans %}')
-            msg = '"context" in %r tag expected exactly one argument.' % 'blocktrans'
-            with self.assertRaisesMessage(TemplateSyntaxError, msg):
+            with self.assertRaises(TemplateSyntaxError):
                 Template('{% load i18n %}{% blocktrans context %}{% endblocktrans %}')
-            with self.assertRaisesMessage(TemplateSyntaxError, msg):
+            with self.assertRaises(TemplateSyntaxError):
                 Template(
                     '{% load i18n %}{% blocktrans count number=2 context %}'
                     '{{ number }} super result{% plural %}{{ number }}'

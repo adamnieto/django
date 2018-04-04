@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import datetime
 import decimal
 import json
@@ -9,7 +12,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import isolate_apps
-from django.utils.translation import gettext_lazy, override
+from django.utils.deprecation import CallableFalse, CallableTrue
+from django.utils.translation import override, ugettext_lazy
 
 from .models import Score
 from .tests import SerializersTestBase, SerializersTransactionTestBase
@@ -55,13 +59,20 @@ class JsonSerializerTestCase(SerializersTestBase, TestCase):
 
     @staticmethod
     def _get_pk_values(serial_str):
+        ret_list = []
         serial_list = json.loads(serial_str)
-        return [obj_dict['pk'] for obj_dict in serial_list]
+        for obj_dict in serial_list:
+            ret_list.append(obj_dict["pk"])
+        return ret_list
 
     @staticmethod
     def _get_field_values(serial_str, field_name):
+        ret_list = []
         serial_list = json.loads(serial_str)
-        return [obj_dict['fields'][field_name] for obj_dict in serial_list if field_name in obj_dict['fields']]
+        for obj_dict in serial_list:
+            if field_name in obj_dict["fields"]:
+                ret_list.append(obj_dict["fields"][field_name])
+        return ret_list
 
     def test_indentation_whitespace(self):
         s = serializers.json.Serializer()
@@ -79,7 +90,7 @@ class JsonSerializerTestCase(SerializersTestBase, TestCase):
             def default(self, o):
                 if isinstance(o, decimal.Decimal):
                     return str(o)
-                return super().default(o)
+                return super(CustomJSONEncoder, self).default(o)
 
         s = serializers.json.Serializer()
         json_data = s.serialize(
@@ -285,12 +296,12 @@ class JsonSerializerTransactionTestCase(SerializersTransactionTestBase, Transact
 class DjangoJSONEncoderTests(SimpleTestCase):
     def test_lazy_string_encoding(self):
         self.assertEqual(
-            json.dumps({'lang': gettext_lazy("French")}, cls=DjangoJSONEncoder),
+            json.dumps({'lang': ugettext_lazy("French")}, cls=DjangoJSONEncoder),
             '{"lang": "French"}'
         )
         with override('fr'):
             self.assertEqual(
-                json.dumps({'lang': gettext_lazy("French")}, cls=DjangoJSONEncoder),
+                json.dumps({'lang': ugettext_lazy("French")}, cls=DjangoJSONEncoder),
                 '{"lang": "Fran\\u00e7ais"}'
             )
 
@@ -305,3 +316,7 @@ class DjangoJSONEncoderTests(SimpleTestCase):
             json.dumps({'duration': duration}, cls=DjangoJSONEncoder),
             '{"duration": "P0DT00H00M00S"}'
         )
+
+    def test_callable_bool(self):
+        self.assertEqual(json.dumps(CallableTrue, cls=DjangoJSONEncoder), 'true')
+        self.assertEqual(json.dumps(CallableFalse, cls=DjangoJSONEncoder), 'false')

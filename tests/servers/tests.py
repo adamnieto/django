@@ -1,20 +1,24 @@
+# -*- encoding: utf-8 -*-
 """
 Tests for django.core.servers.
 """
+from __future__ import unicode_literals
+
+import contextlib
 import errno
 import os
 import socket
-import sys
-from http.client import HTTPConnection, RemoteDisconnected
-from urllib.error import HTTPError
-from urllib.parse import urlencode
-from urllib.request import urlopen
 
 from django.test import LiveServerTestCase, override_settings
+from django.utils._os import upath
+from django.utils.http import urlencode
+from django.utils.six import text_type
+from django.utils.six.moves.urllib.error import HTTPError
+from django.utils.six.moves.urllib.request import urlopen
 
 from .models import Person
 
-TEST_ROOT = os.path.dirname(__file__)
+TEST_ROOT = os.path.dirname(upath(__file__))
 TEST_SETTINGS = {
     'MEDIA_URL': '/media/',
     'MEDIA_ROOT': os.path.join(TEST_ROOT, 'media'),
@@ -42,57 +46,27 @@ class LiveServerAddress(LiveServerBase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(LiveServerAddress, cls).setUpClass()
         # put it in a list to prevent descriptor lookups in test
         cls.live_server_url_test = [cls.live_server_url]
 
     def test_live_server_url_is_class_property(self):
-        self.assertIsInstance(self.live_server_url_test[0], str)
+        self.assertIsInstance(self.live_server_url_test[0], text_type)
         self.assertEqual(self.live_server_url_test[0], self.live_server_url)
 
 
 class LiveServerViews(LiveServerBase):
-    def test_protocol(self):
-        """Launched server serves with HTTP 1.1."""
-        with self.urlopen('/example_view/') as f:
-            self.assertEqual(f.version, 11)
-
-    @override_settings(MIDDLEWARE=[])
-    def test_closes_connection_without_content_length(self):
-        """
-        The server doesn't support keep-alive because Python's http.server
-        module that it uses hangs if a Content-Length header isn't set (for
-        example, if CommonMiddleware isn't enabled or if the response is a
-        StreamingHttpResponse) (#28440 / https://bugs.python.org/issue31076).
-        """
-        conn = HTTPConnection(LiveServerViews.server_thread.host, LiveServerViews.server_thread.port, timeout=1)
-        try:
-            conn.request('GET', '/example_view/', headers={'Connection': 'keep-alive'})
-            response = conn.getresponse().read()
-            conn.request('GET', '/example_view/', headers={'Connection': 'close'})
-            # macOS may give ConnectionResetError.
-            with self.assertRaises((RemoteDisconnected, ConnectionResetError)):
-                try:
-                    conn.getresponse()
-                except ConnectionAbortedError:
-                    if sys.platform == 'win32':
-                        self.skipTest('Ignore nondeterministic failure on Windows.')
-        finally:
-            conn.close()
-        self.assertEqual(response, b'example view')
-
     def test_404(self):
         with self.assertRaises(HTTPError) as err:
             self.urlopen('/')
-        err.exception.close()
         self.assertEqual(err.exception.code, 404, 'Expected 404 response')
 
     def test_view(self):
-        with self.urlopen('/example_view/') as f:
+        with contextlib.closing(self.urlopen('/example_view/')) as f:
             self.assertEqual(f.read(), b'example view')
 
     def test_static_files(self):
-        with self.urlopen('/static/example_static_file.txt') as f:
+        with contextlib.closing(self.urlopen('/static/example_static_file.txt')) as f:
             self.assertEqual(f.read().rstrip(b'\r\n'), b'example static file')
 
     def test_no_collectstatic_emulation(self):
@@ -103,15 +77,14 @@ class LiveServerViews(LiveServerBase):
         """
         with self.assertRaises(HTTPError) as err:
             self.urlopen('/static/another_app/another_app_static_file.txt')
-        err.exception.close()
         self.assertEqual(err.exception.code, 404, 'Expected 404 response')
 
     def test_media_files(self):
-        with self.urlopen('/media/example_media_file.txt') as f:
+        with contextlib.closing(self.urlopen('/media/example_media_file.txt')) as f:
             self.assertEqual(f.read().rstrip(b'\r\n'), b'example media file')
 
     def test_environ(self):
-        with self.urlopen('/environ_view/?%s' % urlencode({'q': 'тест'})) as f:
+        with contextlib.closing(self.urlopen('/environ_view/?%s' % urlencode({'q': 'тест'}))) as f:
             self.assertIn(b"QUERY_STRING: 'q=%D1%82%D0%B5%D1%81%D1%82'", f.read())
 
 
@@ -121,15 +94,14 @@ class LiveServerDatabase(LiveServerBase):
         """
         Fixtures are properly loaded and visible to the live server thread.
         """
-        with self.urlopen('/model_view/') as f:
+        with contextlib.closing(self.urlopen('/model_view/')) as f:
             self.assertEqual(f.read().splitlines(), [b'jane', b'robert'])
 
     def test_database_writes(self):
         """
         Data written to the database by a view can be read.
         """
-        with self.urlopen('/create_model_instance/'):
-            pass
+        self.urlopen('/create_model_instance/')
         self.assertQuerysetEqual(
             Person.objects.all().order_by('pk'),
             ['jane', 'robert', 'emily'],
@@ -144,7 +116,7 @@ class LiveServerPort(LiveServerBase):
         Each LiveServerTestCase binds to a unique port or fails to start a
         server thread when run concurrently (#26011).
         """
-        TestCase = type("TestCase", (LiveServerBase,), {})
+        TestCase = type(str("TestCase"), (LiveServerBase,), {})
         try:
             TestCase.setUpClass()
         except socket.error as e:
@@ -182,19 +154,3 @@ class LiveServerPort(LiveServerBase):
         finally:
             if hasattr(TestCase, 'server_thread'):
                 TestCase.server_thread.terminate()
-
-
-class LiverServerThreadedTests(LiveServerBase):
-    """If LiverServerTestCase isn't threaded, these tests will hang."""
-
-    def test_view_calls_subview(self):
-        url = '/subview_calling_view/?%s' % urlencode({'url': self.live_server_url})
-        with self.urlopen(url) as f:
-            self.assertEqual(f.read(), b'subview calling view: subview')
-
-    def test_check_model_instance_from_subview(self):
-        url = '/check_model_instance_from_subview/?%s' % urlencode({
-            'url': self.live_server_url,
-        })
-        with self.urlopen(url) as f:
-            self.assertIn(b'emily', f.read())

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from xml.dom import minidom
 
 from django.conf import settings
@@ -17,7 +19,7 @@ class GeoFeedTest(TestCase):
 
     def assertChildNodes(self, elem, expected):
         "Taken from syndication/tests.py."
-        actual = {n.nodeName for n in elem.childNodes}
+        actual = set(n.nodeName for n in elem.childNodes)
         expected = set(expected)
         self.assertEqual(actual, expected)
 

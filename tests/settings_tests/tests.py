@@ -3,7 +3,6 @@ import sys
 import unittest
 import warnings
 from types import ModuleType
-from unittest import mock
 
 from django.conf import ENVIRONMENT_VARIABLE, LazySettings, Settings, settings
 from django.core.exceptions import ImproperlyConfigured
@@ -12,7 +11,6 @@ from django.test import (
     SimpleTestCase, TestCase, TransactionTestCase, modify_settings,
     override_settings, signals,
 )
-from django.test.utils import requires_tz_support
 
 
 @modify_settings(ITEMS={
@@ -26,8 +24,8 @@ class FullyDecoratedTranTestCase(TransactionTestCase):
     available_apps = []
 
     def test_override(self):
-        self.assertEqual(settings.ITEMS, ['b', 'c', 'd'])
-        self.assertEqual(settings.ITEMS_OUTER, [1, 2, 3])
+        self.assertListEqual(settings.ITEMS, ['b', 'c', 'd'])
+        self.assertListEqual(settings.ITEMS_OUTER, [1, 2, 3])
         self.assertEqual(settings.TEST, 'override')
         self.assertEqual(settings.TEST_OUTER, 'outer')
 
@@ -37,8 +35,8 @@ class FullyDecoratedTranTestCase(TransactionTestCase):
         'remove': ['d', 'c'],
     })
     def test_method_list_override(self):
-        self.assertEqual(settings.ITEMS, ['a', 'b', 'e', 'f'])
-        self.assertEqual(settings.ITEMS_OUTER, [1, 2, 3])
+        self.assertListEqual(settings.ITEMS, ['a', 'b', 'e', 'f'])
+        self.assertListEqual(settings.ITEMS_OUTER, [1, 2, 3])
 
     @modify_settings(ITEMS={
         'append': ['b'],
@@ -46,7 +44,7 @@ class FullyDecoratedTranTestCase(TransactionTestCase):
         'remove': ['a', 'c', 'e'],
     })
     def test_method_list_override_no_ops(self):
-        self.assertEqual(settings.ITEMS, ['b', 'd'])
+        self.assertListEqual(settings.ITEMS, ['b', 'd'])
 
     @modify_settings(ITEMS={
         'append': 'e',
@@ -54,12 +52,12 @@ class FullyDecoratedTranTestCase(TransactionTestCase):
         'remove': 'c',
     })
     def test_method_list_override_strings(self):
-        self.assertEqual(settings.ITEMS, ['a', 'b', 'd', 'e'])
+        self.assertListEqual(settings.ITEMS, ['a', 'b', 'd', 'e'])
 
     @modify_settings(ITEMS={'remove': ['b', 'd']})
     @modify_settings(ITEMS={'append': ['b'], 'prepend': ['d']})
     def test_method_list_override_nested_order(self):
-        self.assertEqual(settings.ITEMS, ['d', 'c', 'b'])
+        self.assertListEqual(settings.ITEMS, ['d', 'c', 'b'])
 
     @override_settings(TEST='override2')
     def test_method_override(self):
@@ -82,7 +80,7 @@ class FullyDecoratedTranTestCase(TransactionTestCase):
 class FullyDecoratedTestCase(TestCase):
 
     def test_override(self):
-        self.assertEqual(settings.ITEMS, ['b', 'c', 'd'])
+        self.assertListEqual(settings.ITEMS, ['b', 'c', 'd'])
         self.assertEqual(settings.TEST, 'override')
 
     @modify_settings(ITEMS={
@@ -92,7 +90,7 @@ class FullyDecoratedTestCase(TestCase):
     })
     @override_settings(TEST='override2')
     def test_method_override(self):
-        self.assertEqual(settings.ITEMS, ['a', 'b', 'd', 'e'])
+        self.assertListEqual(settings.ITEMS, ['a', 'b', 'd', 'e'])
         self.assertEqual(settings.TEST, 'override2')
 
 
@@ -110,7 +108,7 @@ class ClassDecoratedTestCase(ClassDecoratedTestCaseSuper):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
+        super(ClassDecoratedTestCase, cls).setUpClass()
         cls.foo = getattr(settings, 'TEST', 'BUG')
 
     def test_override(self):
@@ -129,7 +127,7 @@ class ClassDecoratedTestCase(ClassDecoratedTestCaseSuper):
         Overriding a method on a super class and then calling that method on
         the super class should not trigger infinite recursion. See #17011.
         """
-        super().test_max_recursion_error()
+        super(ClassDecoratedTestCase, self).test_max_recursion_error()
 
 
 @modify_settings(ITEMS={'append': 'mother'})
@@ -238,7 +236,7 @@ class SettingsTests(SimpleTestCase):
             getattr(settings, 'TEST')
 
     def test_settings_delete_wrapped(self):
-        with self.assertRaisesMessage(TypeError, "can't delete _wrapped."):
+        with self.assertRaises(TypeError):
             delattr(settings, '_wrapped')
 
     def test_override_settings_delete(self):
@@ -288,42 +286,6 @@ class SettingsTests(SimpleTestCase):
         with self.assertRaises(AttributeError):
             getattr(settings, 'TEST2')
 
-    def test_no_secret_key(self):
-        settings_module = ModuleType('fake_settings_module')
-        sys.modules['fake_settings_module'] = settings_module
-        msg = 'The SECRET_KEY setting must not be empty.'
-        try:
-            with self.assertRaisesMessage(ImproperlyConfigured, msg):
-                Settings('fake_settings_module')
-        finally:
-            del sys.modules['fake_settings_module']
-
-    def test_no_settings_module(self):
-        msg = (
-            'Requested setting%s, but settings are not configured. You '
-            'must either define the environment variable DJANGO_SETTINGS_MODULE '
-            'or call settings.configure() before accessing settings.'
-        )
-        orig_settings = os.environ[ENVIRONMENT_VARIABLE]
-        os.environ[ENVIRONMENT_VARIABLE] = ''
-        try:
-            with self.assertRaisesMessage(ImproperlyConfigured, msg % 's'):
-                settings._setup()
-            with self.assertRaisesMessage(ImproperlyConfigured, msg % ' TEST'):
-                settings._setup('TEST')
-        finally:
-            os.environ[ENVIRONMENT_VARIABLE] = orig_settings
-
-    def test_already_configured(self):
-        with self.assertRaisesMessage(RuntimeError, 'Settings already configured.'):
-            settings.configure()
-
-    @requires_tz_support
-    @mock.patch('django.conf.global_settings.TIME_ZONE', 'test')
-    def test_incorrect_timezone(self):
-        with self.assertRaisesMessage(ValueError, 'Incorrect timezone setting: test'):
-            settings._setup()
-
 
 class TestComplexSettingOverride(SimpleTestCase):
     def setUp(self):
@@ -343,7 +305,8 @@ class TestComplexSettingOverride(SimpleTestCase):
                 self.assertEqual(settings.TEST_WARN, 'override')
 
             self.assertEqual(len(w), 1)
-            self.assertEqual(w[0].filename, __file__)
+            # File extension may by .py, .pyc, etc. Compare only basename.
+            self.assertEqual(os.path.splitext(w[0].filename)[0], os.path.splitext(__file__)[0])
             self.assertEqual(str(w[0].message), 'Overriding setting TEST_WARN can lead to unexpected behavior.')
 
 

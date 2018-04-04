@@ -21,11 +21,6 @@ class SimpleSitemap(Sitemap):
         return [object()]
 
 
-class SimplePagedSitemap(Sitemap):
-    def items(self):
-        return [object() for x in range(Sitemap.limit + 1)]
-
-
 class SimpleI18nSitemap(Sitemap):
     changefreq = "never"
     priority = 0.5
@@ -39,6 +34,9 @@ class EmptySitemap(Sitemap):
     changefreq = "never"
     priority = 0.5
     location = '/location/'
+
+    def items(self):
+        return []
 
 
 class FixedLastmodSitemap(SimpleSitemap):
@@ -82,14 +80,6 @@ simple_i18nsitemaps = {
     'simple': SimpleI18nSitemap,
 }
 
-simple_sitemaps_not_callable = {
-    'simple': SimpleSitemap(),
-}
-
-simple_sitemaps_paged = {
-    'simple': SimplePagedSitemap,
-}
-
 empty_sitemaps = {
     'empty': EmptySitemap,
 }
@@ -128,17 +118,9 @@ generic_sitemaps = {
     'generic': GenericSitemap({'queryset': TestModel.objects.order_by('pk').all()}),
 }
 
-generic_sitemaps_lastmod = {
-    'generic': GenericSitemap({
-        'queryset': TestModel.objects.order_by('pk').all(),
-        'date_field': 'lastmod',
-    }),
-}
 
 urlpatterns = [
     url(r'^simple/index\.xml$', views.index, {'sitemaps': simple_sitemaps}),
-    url(r'^simple-paged/index\.xml$', views.index, {'sitemaps': simple_sitemaps_paged}),
-    url(r'^simple-not-callable/index\.xml$', views.index, {'sitemaps': simple_sitemaps_not_callable}),
     url(r'^simple/custom-index\.xml$', views.index,
         {'sitemaps': simple_sitemaps, 'template_name': 'custom_sitemap_index.xml'}),
     url(r'^simple/sitemap-(?P<section>.+)\.xml$', views.sitemap,
@@ -182,9 +164,6 @@ urlpatterns = [
         name='django.contrib.sitemaps.views.sitemap'),
     url(r'^generic/sitemap\.xml$', views.sitemap,
         {'sitemaps': generic_sitemaps},
-        name='django.contrib.sitemaps.views.sitemap'),
-    url(r'^generic-lastmod/sitemap\.xml$', views.sitemap,
-        {'sitemaps': generic_sitemaps_lastmod},
         name='django.contrib.sitemaps.views.sitemap'),
     url(r'^cached/index\.xml$', cache_page(1)(views.index),
         {'sitemaps': simple_sitemaps, 'sitemap_url_name': 'cached_sitemap'}),

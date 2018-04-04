@@ -2,9 +2,7 @@ import datetime
 import unittest
 
 from django.utils.dateparse import parse_duration
-from django.utils.duration import (
-    duration_iso_string, duration_microseconds, duration_string,
-)
+from django.utils.duration import duration_iso_string, duration_string
 
 
 class TestDurationString(unittest.TestCase):
@@ -81,17 +79,3 @@ class TestParseISODurationRoundtrip(unittest.TestCase):
     def test_negative(self):
         duration = datetime.timedelta(days=-1, hours=1, minutes=3, seconds=5)
         self.assertEqual(parse_duration(duration_iso_string(duration)).total_seconds(), duration.total_seconds())
-
-
-class TestDurationMicroseconds(unittest.TestCase):
-    def test(self):
-        deltas = [
-            datetime.timedelta.max,
-            datetime.timedelta.min,
-            datetime.timedelta.resolution,
-            -datetime.timedelta.resolution,
-            datetime.timedelta(microseconds=8999999999999999),
-        ]
-        for delta in deltas:
-            with self.subTest(delta=delta):
-                self.assertEqual(datetime.timedelta(microseconds=duration_microseconds(delta)), delta)

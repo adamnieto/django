@@ -1,7 +1,8 @@
+from __future__ import unicode_literals
+
 from django.contrib import admin
 from django.contrib.admin.options import ModelAdmin
 from django.contrib.auth.models import User
-from django.db.models import F
 from django.test import RequestFactory, TestCase
 
 from .models import (
@@ -10,11 +11,11 @@ from .models import (
 )
 
 
-class MockRequest:
+class MockRequest(object):
     pass
 
 
-class MockSuperUser:
+class MockSuperUser(object):
     def has_perm(self, perm):
         return True
 
@@ -50,7 +51,7 @@ class TestAdminOrdering(TestCase):
         """
         ma = ModelAdmin(Band, site)
         names = [b.name for b in ma.get_queryset(request)]
-        self.assertEqual(['Aerosmith', 'Radiohead', 'Van Halen'], names)
+        self.assertListEqual(['Aerosmith', 'Radiohead', 'Van Halen'], names)
 
     def test_specified_ordering(self):
         """
@@ -61,14 +62,7 @@ class TestAdminOrdering(TestCase):
             ordering = ('rank',)  # default ordering is ('name',)
         ma = BandAdmin(Band, site)
         names = [b.name for b in ma.get_queryset(request)]
-        self.assertEqual(['Radiohead', 'Van Halen', 'Aerosmith'], names)
-
-    def test_specified_ordering_by_f_expression(self):
-        class BandAdmin(ModelAdmin):
-            ordering = (F('rank').desc(nulls_last=True),)
-        band_admin = BandAdmin(Band, site)
-        names = [b.name for b in band_admin.get_queryset(request)]
-        self.assertEqual(['Aerosmith', 'Van Halen', 'Radiohead'], names)
+        self.assertListEqual(['Radiohead', 'Van Halen', 'Aerosmith'], names)
 
     def test_dynamic_ordering(self):
         """
@@ -80,10 +74,10 @@ class TestAdminOrdering(TestCase):
         request.user = super_user
         ma = DynOrderingBandAdmin(Band, site)
         names = [b.name for b in ma.get_queryset(request)]
-        self.assertEqual(['Radiohead', 'Van Halen', 'Aerosmith'], names)
+        self.assertListEqual(['Radiohead', 'Van Halen', 'Aerosmith'], names)
         request.user = other_user
         names = [b.name for b in ma.get_queryset(request)]
-        self.assertEqual(['Aerosmith', 'Radiohead', 'Van Halen'], names)
+        self.assertListEqual(['Aerosmith', 'Radiohead', 'Van Halen'], names)
 
 
 class TestInlineModelAdminOrdering(TestCase):
@@ -107,7 +101,7 @@ class TestInlineModelAdminOrdering(TestCase):
         """
         inline = SongInlineDefaultOrdering(self.band, site)
         names = [s.name for s in inline.get_queryset(request)]
-        self.assertEqual(['Dude (Looks Like a Lady)', 'Jaded', 'Pink'], names)
+        self.assertListEqual(['Dude (Looks Like a Lady)', 'Jaded', 'Pink'], names)
 
     def test_specified_ordering(self):
         """
@@ -115,7 +109,7 @@ class TestInlineModelAdminOrdering(TestCase):
         """
         inline = SongInlineNewOrdering(self.band, site)
         names = [s.name for s in inline.get_queryset(request)]
-        self.assertEqual(['Jaded', 'Pink', 'Dude (Looks Like a Lady)'], names)
+        self.assertListEqual(['Jaded', 'Pink', 'Dude (Looks Like a Lady)'], names)
 
 
 class TestRelatedFieldsAdminOrdering(TestCase):
@@ -138,8 +132,9 @@ class TestRelatedFieldsAdminOrdering(TestCase):
     def check_ordering_of_field_choices(self, correct_ordering):
         fk_field = site._registry[Song].formfield_for_foreignkey(Song.band.field, request=None)
         m2m_field = site._registry[Song].formfield_for_manytomany(Song.other_interpreters.field, request=None)
-        self.assertEqual(list(fk_field.queryset), correct_ordering)
-        self.assertEqual(list(m2m_field.queryset), correct_ordering)
+
+        self.assertListEqual(list(fk_field.queryset), correct_ordering)
+        self.assertListEqual(list(m2m_field.queryset), correct_ordering)
 
     def test_no_admin_fallback_to_model_ordering(self):
         # should be ordered by name (as defined by the model)
@@ -168,12 +163,12 @@ class TestRelatedFieldsAdminOrdering(TestCase):
             def formfield_for_foreignkey(self, db_field, request, **kwargs):
                 if db_field.name == 'band':
                     kwargs["queryset"] = Band.objects.filter(rank__gt=2)
-                return super().formfield_for_foreignkey(db_field, request, **kwargs)
+                return super(SongAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
             def formfield_for_manytomany(self, db_field, request, **kwargs):
                 if db_field.name == 'other_interpreters':
                     kwargs["queryset"] = Band.objects.filter(rank__gt=2)
-                return super().formfield_for_foreignkey(db_field, request, **kwargs)
+                return super(SongAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
         class StaticOrderingBandAdmin(admin.ModelAdmin):
             ordering = ('rank',)

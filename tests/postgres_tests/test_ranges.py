@@ -3,7 +3,7 @@ import json
 
 from django import forms
 from django.core import exceptions, serializers
-from django.db.models import DateField, DateTimeField, F, Func, Value
+from django.db.models import F
 from django.test import override_settings
 from django.utils import timezone
 
@@ -85,80 +85,6 @@ class TestSaveLoad(PostgreSQLTestCase):
         field = instance._meta.get_field('ints')
         self.assertEqual(field.model, RangesModel)
         self.assertEqual(field.base_field.model, RangesModel)
-
-
-class TestRangeContainsLookup(PostgreSQLTestCase):
-
-    @classmethod
-    def setUpTestData(cls):
-        cls.timestamps = [
-            datetime.datetime(year=2016, month=1, day=1),
-            datetime.datetime(year=2016, month=1, day=2, hour=1),
-            datetime.datetime(year=2016, month=1, day=2, hour=12),
-            datetime.datetime(year=2016, month=1, day=3),
-            datetime.datetime(year=2016, month=1, day=3, hour=1),
-            datetime.datetime(year=2016, month=2, day=2),
-        ]
-        cls.aware_timestamps = [
-            timezone.make_aware(timestamp)
-            for timestamp in cls.timestamps
-        ]
-        cls.dates = [
-            datetime.date(year=2016, month=1, day=1),
-            datetime.date(year=2016, month=1, day=2),
-            datetime.date(year=2016, month=1, day=3),
-            datetime.date(year=2016, month=1, day=4),
-            datetime.date(year=2016, month=2, day=2),
-            datetime.date(year=2016, month=2, day=3),
-        ]
-        cls.obj = RangesModel.objects.create(
-            dates=(cls.dates[0], cls.dates[3]),
-            timestamps=(cls.timestamps[0], cls.timestamps[3]),
-        )
-        cls.aware_obj = RangesModel.objects.create(
-            dates=(cls.dates[0], cls.dates[3]),
-            timestamps=(cls.aware_timestamps[0], cls.aware_timestamps[3]),
-        )
-        # Objects that don't match any queries.
-        for i in range(3, 4):
-            RangesModel.objects.create(
-                dates=(cls.dates[i], cls.dates[i + 1]),
-                timestamps=(cls.timestamps[i], cls.timestamps[i + 1]),
-            )
-            RangesModel.objects.create(
-                dates=(cls.dates[i], cls.dates[i + 1]),
-                timestamps=(cls.aware_timestamps[i], cls.aware_timestamps[i + 1]),
-            )
-
-    def test_datetime_range_contains(self):
-        filter_args = (
-            self.timestamps[1],
-            self.aware_timestamps[1],
-            (self.timestamps[1], self.timestamps[2]),
-            (self.aware_timestamps[1], self.aware_timestamps[2]),
-            Value(self.dates[0], output_field=DateTimeField()),
-            Func(F('dates'), function='lower', output_field=DateTimeField()),
-        )
-        for filter_arg in filter_args:
-            with self.subTest(filter_arg=filter_arg):
-                self.assertCountEqual(
-                    RangesModel.objects.filter(**{'timestamps__contains': filter_arg}),
-                    [self.obj, self.aware_obj],
-                )
-
-    def test_date_range_contains(self):
-        filter_args = (
-            self.timestamps[1],
-            (self.dates[1], self.dates[2]),
-            Value(self.dates[0], output_field=DateField()),
-            Func(F('timestamps'), function='lower', output_field=DateField()),
-        )
-        for filter_arg in filter_args:
-            with self.subTest(filter_arg=filter_arg):
-                self.assertCountEqual(
-                    RangesModel.objects.filter(**{'dates__contains': filter_arg}),
-                    [self.obj, self.aware_obj],
-                )
 
 
 class TestQuerying(PostgreSQLTestCase):
@@ -408,24 +334,18 @@ class TestValidators(PostgreSQLTestCase):
     def test_max(self):
         validator = RangeMaxValueValidator(5)
         validator(NumericRange(0, 5))
-        msg = 'Ensure that this range is completely less than or equal to 5.'
         with self.assertRaises(exceptions.ValidationError) as cm:
             validator(NumericRange(0, 10))
-        self.assertEqual(cm.exception.messages[0], msg)
+        self.assertEqual(cm.exception.messages[0], 'Ensure that this range is completely less than or equal to 5.')
         self.assertEqual(cm.exception.code, 'max_value')
-        with self.assertRaisesMessage(exceptions.ValidationError, msg):
-            validator(NumericRange(0, None))  # an unbound range
 
     def test_min(self):
         validator = RangeMinValueValidator(5)
         validator(NumericRange(10, 15))
-        msg = 'Ensure that this range is completely greater than or equal to 5.'
         with self.assertRaises(exceptions.ValidationError) as cm:
             validator(NumericRange(0, 10))
-        self.assertEqual(cm.exception.messages[0], msg)
+        self.assertEqual(cm.exception.messages[0], 'Ensure that this range is completely greater than or equal to 5.')
         self.assertEqual(cm.exception.code, 'min_value')
-        with self.assertRaisesMessage(exceptions.ValidationError, msg):
-            validator(NumericRange(None, 10))  # an unbound range
 
 
 class TestFormField(PostgreSQLTestCase):
@@ -468,10 +388,10 @@ class TestFormField(PostgreSQLTestCase):
                 <label for="id_field_0">Field:</label>
                 </th>
                 <td>
-                    <input id="id_field_0_0" name="field_0_0" type="text">
-                    <input id="id_field_0_1" name="field_0_1" type="text">
-                    <input id="id_field_1_0" name="field_1_0" type="text">
-                    <input id="id_field_1_1" name="field_1_1" type="text">
+                    <input id="id_field_0_0" name="field_0_0" type="text" />
+                    <input id="id_field_0_1" name="field_0_1" type="text" />
+                    <input id="id_field_1_0" name="field_1_0" type="text" />
+                    <input id="id_field_1_1" name="field_1_1" type="text" />
                 </td>
             </tr>
         ''')
@@ -499,8 +419,8 @@ class TestFormField(PostgreSQLTestCase):
         <tr>
             <th><label for="id_ints_0">Ints:</label></th>
             <td>
-                <input id="id_ints_0" name="ints_0" type="number">
-                <input id="id_ints_1" name="ints_1" type="number">
+                <input id="id_ints_0" name="ints_0" type="number" />
+                <input id="id_ints_1" name="ints_1" type="number" />
             </td>
         </tr>
         ''')
@@ -700,11 +620,11 @@ class TestWidget(PostgreSQLTestCase):
         f = pg_forms.ranges.DateTimeRangeField()
         self.assertHTMLEqual(
             f.widget.render('datetimerange', ''),
-            '<input type="text" name="datetimerange_0"><input type="text" name="datetimerange_1">'
+            '<input type="text" name="datetimerange_0" /><input type="text" name="datetimerange_1" />'
         )
         self.assertHTMLEqual(
             f.widget.render('datetimerange', None),
-            '<input type="text" name="datetimerange_0"><input type="text" name="datetimerange_1">'
+            '<input type="text" name="datetimerange_0" /><input type="text" name="datetimerange_1" />'
         )
         dt_range = DateTimeTZRange(
             datetime.datetime(2006, 1, 10, 7, 30),
@@ -712,6 +632,6 @@ class TestWidget(PostgreSQLTestCase):
         )
         self.assertHTMLEqual(
             f.widget.render('datetimerange', dt_range),
-            '<input type="text" name="datetimerange_0" value="2006-01-10 07:30:00">'
-            '<input type="text" name="datetimerange_1" value="2006-02-12 09:50:00">'
+            '<input type="text" name="datetimerange_0" value="2006-01-10 07:30:00" />'
+            '<input type="text" name="datetimerange_1" value="2006-02-12 09:50:00" />'
         )

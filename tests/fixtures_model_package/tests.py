@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core import management
 from django.core.management import CommandError
 from django.test import TestCase

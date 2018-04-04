@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.http import Http404, HttpResponse
 from django.template import engines
 from django.template.response import TemplateResponse
@@ -5,7 +7,7 @@ from django.template.response import TemplateResponse
 log = []
 
 
-class BaseMiddleware:
+class BaseMiddleware(object):
     def __init__(self, get_response):
         self.get_response = get_response
 

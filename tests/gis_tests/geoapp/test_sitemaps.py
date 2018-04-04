@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import zipfile
 from io import BytesIO
 from xml.dom import minidom
@@ -14,12 +16,12 @@ from .models import City, Country
 class GeoSitemapTest(TestCase):
 
     def setUp(self):
-        super().setUp()
+        super(GeoSitemapTest, self).setUp()
         Site(id=settings.SITE_ID, domain="example.com", name="example.com").save()
 
     def assertChildNodes(self, elem, expected):
         "Taken from syndication/tests.py."
-        actual = {n.nodeName for n in elem.childNodes}
+        actual = set(n.nodeName for n in elem.childNodes)
         expected = set(expected)
         self.assertEqual(actual, expected)
 

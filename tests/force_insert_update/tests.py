@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.db import DatabaseError, IntegrityError, transaction
 from django.test import TestCase
 
@@ -20,15 +22,13 @@ class ForceTests(TestCase):
         # Won't work because force_update and force_insert are mutually
         # exclusive
         c.value = 4
-        msg = 'Cannot force both insert and updating in model saving.'
-        with self.assertRaisesMessage(ValueError, msg):
+        with self.assertRaises(ValueError):
             c.save(force_insert=True, force_update=True)
 
         # Try to update something that doesn't have a primary key in the first
         # place.
         c1 = Counter(name="two", value=2)
-        msg = 'Cannot force an update in save() with no primary key.'
-        with self.assertRaisesMessage(ValueError, msg):
+        with self.assertRaises(ValueError):
             with transaction.atomic():
                 c1.save(force_update=True)
         c1.save(force_insert=True)
@@ -42,8 +42,7 @@ class ForceTests(TestCase):
         # Trying to update should still fail, even with manual primary keys, if
         # the data isn't in the database already.
         obj = WithCustomPK(name=1, value=1)
-        msg = 'Forced update did not affect any rows.'
-        with self.assertRaisesMessage(DatabaseError, msg):
+        with self.assertRaises(DatabaseError):
             with transaction.atomic():
                 obj.save(force_update=True)
 

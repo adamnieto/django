@@ -126,14 +126,6 @@ class ExecutorTests(MigrationTestBase):
         migrations_apps = executor.loader.project_state(("migrations", "0001_initial")).apps
         Editor = migrations_apps.get_model("migrations", "Editor")
         self.assertFalse(Editor.objects.exists())
-        # Record previous migration as successful.
-        executor.migrate([("migrations", "0001_initial")], fake=True)
-        # Rebuild the graph to reflect the new DB state.
-        executor.loader.build_graph()
-        # Migrating backwards is also atomic.
-        with self.assertRaisesMessage(RuntimeError, "Abort migration"):
-            executor.migrate([("migrations", None)])
-        self.assertFalse(Editor.objects.exists())
 
     @override_settings(MIGRATION_MODULES={
         "migrations": "migrations.test_migrations",
@@ -554,14 +546,14 @@ class ExecutorTests(MigrationTestBase):
 
         migrations = executor.loader.graph.nodes
         expected = [
-            ("render_start",),
-            ("render_success",),
+            ("render_start", ),
+            ("render_success", ),
             ("apply_start", migrations['migrations', '0001_initial'], False),
             ("apply_success", migrations['migrations', '0001_initial'], False),
             ("apply_start", migrations['migrations', '0002_second'], False),
             ("apply_success", migrations['migrations', '0002_second'], False),
-            ("render_start",),
-            ("render_success",),
+            ("render_start", ),
+            ("render_success", ),
             ("unapply_start", migrations['migrations', '0002_second'], False),
             ("unapply_success", migrations['migrations', '0002_second'], False),
             ("unapply_start", migrations['migrations', '0001_initial'], False),
@@ -650,13 +642,13 @@ class ExecutorTests(MigrationTestBase):
         )
 
 
-class FakeLoader:
+class FakeLoader(object):
     def __init__(self, graph, applied):
         self.graph = graph
         self.applied_migrations = applied
 
 
-class FakeMigration:
+class FakeMigration(object):
     """Really all we need is any object with a debug-useful repr."""
     def __init__(self, name):
         self.name = name

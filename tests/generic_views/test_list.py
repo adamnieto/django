@@ -1,7 +1,12 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import datetime
 
 from django.core.exceptions import ImproperlyConfigured
 from django.test import TestCase, override_settings
+from django.utils import translation
+from django.utils.encoding import force_str
 from django.views.generic.base import View
 
 from .models import Artist, Author, Book, Page
@@ -98,6 +103,13 @@ class ListViewTests(TestCase):
         self._make_authors(100)
         res = self.client.get('/list/authors/paginated/42/')
         self.assertEqual(res.status_code, 404)
+
+    def test_paginated_page_out_of_range_non_ascii_message(self):
+        msg = 'Ung\xfcltige Seite (42): Diese Seite enth\xe4lt keine Ergebnisse'
+        with translation.override('de'):
+            res = self.client.get('/list/authors/paginated/42/')
+            self.assertEqual(res.status_code, 404)
+            self.assertEqual(res.context['exception'], msg)
 
     def test_paginated_invalid_page(self):
         self._make_authors(100)
@@ -200,20 +212,8 @@ class ListViewTests(TestCase):
         self.assertTemplateUsed(res, 'generic_views/author_list.html')
 
     def test_missing_items(self):
-        msg = (
-            'AuthorList is missing a QuerySet. Define AuthorList.model, '
-            'AuthorList.queryset, or override AuthorList.get_queryset().'
-        )
-        with self.assertRaisesMessage(ImproperlyConfigured, msg):
+        with self.assertRaises(ImproperlyConfigured):
             self.client.get('/list/authors/invalid/')
-
-    def test_invalid_get_queryset(self):
-        msg = (
-            "AuthorListGetQuerysetReturnsNone requires either a 'template_name' "
-            "attribute or a get_queryset() method that returns a QuerySet."
-        )
-        with self.assertRaisesMessage(ImproperlyConfigured, msg):
-            self.client.get('/list/authors/get_queryset/')
 
     def test_paginated_list_view_does_not_load_entire_table(self):
         # Regression test for #17535
@@ -246,7 +246,7 @@ class ListViewTests(TestCase):
         self._make_authors(1)
         res = self.client.get('/list/authors/paginated/2/')
         self.assertEqual(res.status_code, 404)
-        self.assertEqual(res.context.get('reason'), "Invalid page (2): That page contains no results")
+        self.assertEqual(force_str(res.context.get('reason')), "Invalid page (2): That page contains no results")
 
     def _make_authors(self, n):
         Author.objects.all().delete()

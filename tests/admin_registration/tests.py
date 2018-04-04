@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.contrib import admin
 from django.contrib.admin.decorators import register
 from django.contrib.admin.sites import site
@@ -30,8 +32,7 @@ class TestRegistration(SimpleTestCase):
 
     def test_prevent_double_registration(self):
         self.site.register(Person)
-        msg = 'The model Person is already registered'
-        with self.assertRaisesMessage(admin.sites.AlreadyRegistered, msg):
+        with self.assertRaises(admin.sites.AlreadyRegistered):
             self.site.register(Person)
 
     def test_registration_with_star_star_options(self):
@@ -56,8 +57,7 @@ class TestRegistration(SimpleTestCase):
         Exception is raised when trying to register an abstract model.
         Refs #12004.
         """
-        msg = 'The model Location is abstract, so it cannot be registered with admin.'
-        with self.assertRaisesMessage(ImproperlyConfigured, msg):
+        with self.assertRaises(ImproperlyConfigured):
             self.site.register(Location)
 
     def test_is_registered_model(self):

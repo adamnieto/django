@@ -1,5 +1,8 @@
+from __future__ import unicode_literals
+
 from django.forms.models import ModelForm, inlineformset_factory
 from django.test import TestCase, skipUnlessDBFeature
+from django.utils import six
 
 from .models import Child, Parent, Poem, Poet, School
 
@@ -64,8 +67,8 @@ class DeletionTests(TestCase):
             'poem_set-TOTAL_FORMS': '1',
             'poem_set-INITIAL_FORMS': '1',
             'poem_set-MAX_NUM_FORMS': '0',
-            'poem_set-0-id': str(poem.id),
-            'poem_set-0-poem': str(poem.id),
+            'poem_set-0-id': six.text_type(poem.id),
+            'poem_set-0-poem': six.text_type(poem.id),
             'poem_set-0-name': 'x' * 1000,
         }
         formset = PoemFormSet(data, instance=poet)
@@ -194,7 +197,7 @@ class InlineFormsetFactoryTest(TestCase):
         class PoemModelForm(ModelForm):
             def __init__(self, *args, **kwargs):
                 assert 'poet' in self._meta.fields
-                super().__init__(*args, **kwargs)
+                super(PoemModelForm, self).__init__(*args, **kwargs)
 
         poet = Poet.objects.create(name='test')
         poet.poem_set.create(name='first test poem')

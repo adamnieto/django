@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.urls import reverse, reverse_lazy
@@ -12,7 +14,7 @@ class CustomTemplateView(generic.TemplateView):
     template_name = 'generic_views/about.html'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        context = super(CustomTemplateView, self).get_context_data(**kwargs)
         context.update({'key': 'value'})
         return context
 
@@ -66,25 +68,28 @@ class AuthorList(generic.ListView):
     queryset = Author.objects.all()
 
 
-class AuthorListGetQuerysetReturnsNone(AuthorList):
-    def get_queryset(self):
-        return None
-
-
 class BookList(generic.ListView):
     model = Book
 
 
 class CustomPaginator(Paginator):
     def __init__(self, queryset, page_size, orphans=0, allow_empty_first_page=True):
-        super().__init__(queryset, page_size, orphans=2, allow_empty_first_page=allow_empty_first_page)
+        super(CustomPaginator, self).__init__(
+            queryset,
+            page_size,
+            orphans=2,
+            allow_empty_first_page=allow_empty_first_page)
 
 
 class AuthorListCustomPaginator(AuthorList):
     paginate_by = 5
 
     def get_paginator(self, queryset, page_size, orphans=0, allow_empty_first_page=True):
-        return super().get_paginator(queryset, page_size, orphans=2, allow_empty_first_page=allow_empty_first_page)
+        return super(AuthorListCustomPaginator, self).get_paginator(
+            queryset,
+            page_size,
+            orphans=2,
+            allow_empty_first_page=allow_empty_first_page)
 
 
 class ContactView(generic.FormView):
@@ -149,7 +154,7 @@ class AuthorUpdate(generic.UpdateView):
 
     def get_form(self, *args, **kwargs):
         self.get_form_called_count += 1
-        return super().get_form(*args, **kwargs)
+        return super(AuthorUpdate, self).get_form(*args, **kwargs)
 
 
 class OneAuthorUpdate(generic.UpdateView):
@@ -186,7 +191,7 @@ class SpecializedAuthorDelete(generic.DeleteView):
     success_url = reverse_lazy('authors_list')
 
 
-class BookConfig:
+class BookConfig(object):
     queryset = Book.objects.all()
     date_field = 'pubdate'
 
@@ -228,7 +233,8 @@ class AuthorGetQuerySetFormView(generic.edit.ModelFormMixin):
 
 class BookDetailGetObjectCustomQueryset(BookDetail):
     def get_object(self, queryset=None):
-        return super().get_object(queryset=Book.objects.filter(pk=self.kwargs['pk']))
+        return super(BookDetailGetObjectCustomQueryset, self).get_object(
+            queryset=Book.objects.filter(pk=self.kwargs['pk']))
 
 
 class CustomMultipleObjectMixinView(generic.list.MultipleObjectMixin, generic.View):
@@ -251,7 +257,7 @@ class CustomContextView(generic.detail.SingleObjectMixin, generic.View):
     def get_context_data(self, **kwargs):
         context = {'custom_key': 'custom_value'}
         context.update(kwargs)
-        return super().get_context_data(**context)
+        return super(CustomContextView, self).get_context_data(**context)
 
     def get_context_object_name(self, obj):
         return "test_name"
@@ -262,7 +268,7 @@ class CustomSingleObjectView(generic.detail.SingleObjectMixin, generic.View):
     object = Book(name="dummy")
 
 
-class BookSigningConfig:
+class BookSigningConfig(object):
     model = BookSigning
     date_field = 'event_date'
     # use the same templates as for books
@@ -299,7 +305,7 @@ class BookSigningDetail(BookSigningConfig, generic.DateDetailView):
     context_object_name = 'book'
 
 
-class NonModel:
+class NonModel(object):
     id = "non_model_1"
 
     _meta = None

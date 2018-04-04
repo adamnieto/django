@@ -1,12 +1,19 @@
 import os
 import shutil
 import tempfile
+import unittest
 
 from django import conf
 from django.test import TestCase
 from django.test.utils import extend_sys_path
+from django.utils import six
 
 
+@unittest.skipIf(
+    six.PY2,
+    'Python 2 cannot import the project template because '
+    'django/conf/project_template doesn\'t have an __init__.py file.'
+)
 class TestStartProjectSettings(TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

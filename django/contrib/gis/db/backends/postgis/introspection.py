@@ -41,7 +41,7 @@ class PostGISIntrospection(DatabaseIntrospection):
 
     def get_postgis_types(self):
         """
-        Return a dictionary with keys that are the PostgreSQL object
+        Returns a dictionary with keys that are the PostgreSQL object
         identification integers for the PostGIS geometry and/or
         geography types (if supported).
         """
@@ -59,11 +59,15 @@ class PostGISIntrospection(DatabaseIntrospection):
         # to query the PostgreSQL pg_type table corresponding to the
         # PostGIS custom data types.
         oid_sql = 'SELECT "oid" FROM "pg_type" WHERE "typname" = %s'
-        with self.connection.cursor() as cursor:
+        cursor = self.connection.cursor()
+        try:
             for field_type in field_types:
                 cursor.execute(oid_sql, (field_type[0],))
                 for result in cursor.fetchall():
                     postgis_types[result[0]] = field_type[1]
+        finally:
+            cursor.close()
+
         return postgis_types
 
     def get_field_type(self, data_type, description):
@@ -75,16 +79,17 @@ class PostGISIntrospection(DatabaseIntrospection):
             # performed -- in other words, when this function is called.
             self.postgis_types_reverse = self.get_postgis_types()
             self.data_types_reverse.update(self.postgis_types_reverse)
-        return super().get_field_type(data_type, description)
+        return super(PostGISIntrospection, self).get_field_type(data_type, description)
 
     def get_geometry_type(self, table_name, geo_col):
         """
         The geometry type OID used by PostGIS does not indicate the particular
         type of field that a geometry column is (e.g., whether it's a
         PointField or a PolygonField).  Thus, this routine queries the PostGIS
-        metadata tables to determine the geometry type.
+        metadata tables to determine the geometry type,
         """
-        with self.connection.cursor() as cursor:
+        cursor = self.connection.cursor()
+        try:
             try:
                 # First seeing if this geometry column is in the `geometry_columns`
                 cursor.execute('SELECT "coord_dimension", "srid", "type" '
@@ -117,4 +122,7 @@ class PostGISIntrospection(DatabaseIntrospection):
                 field_params['srid'] = srid
             if dim != 2:
                 field_params['dim'] = dim
+        finally:
+            cursor.close()
+
         return field_type, field_params

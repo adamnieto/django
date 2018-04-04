@@ -1,6 +1,10 @@
+from __future__ import unicode_literals
+
 import warnings
 
 from django.test import SimpleTestCase
+from django.test.utils import reset_warning_registry
+from django.utils import six
 from django.utils.deprecation import (
     DeprecationInstanceCheck, RemovedInNextVersionWarning, RenameMethodsBase,
 )
@@ -23,10 +27,11 @@ class RenameMethodsTests(SimpleTestCase):
         Ensure a warning is raised upon class definition to suggest renaming
         the faulty method.
         """
+        reset_warning_registry()
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter('always')
 
-            class Manager(metaclass=RenameManagerMethods):
+            class Manager(six.with_metaclass(RenameManagerMethods)):
                 def old(self):
                     pass
             self.assertEqual(len(recorded), 1)
@@ -40,7 +45,7 @@ class RenameMethodsTests(SimpleTestCase):
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter('ignore')
 
-            class Manager(metaclass=RenameManagerMethods):
+            class Manager(six.with_metaclass(RenameManagerMethods)):
                 def new(self):
                     pass
             warnings.simplefilter('always')
@@ -59,7 +64,7 @@ class RenameMethodsTests(SimpleTestCase):
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter('ignore')
 
-            class Manager(metaclass=RenameManagerMethods):
+            class Manager(six.with_metaclass(RenameManagerMethods)):
                 def old(self):
                     pass
             warnings.simplefilter('always')
@@ -79,13 +84,13 @@ class RenameMethodsTests(SimpleTestCase):
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter('ignore')
 
-            class Renamed(metaclass=RenameManagerMethods):
+            class Renamed(six.with_metaclass(RenameManagerMethods)):
                 def new(self):
                     pass
 
             class Deprecated(Renamed):
                 def old(self):
-                    super().old()
+                    super(Deprecated, self).old()
             warnings.simplefilter('always')
             deprecated = Deprecated()
             deprecated.new()
@@ -109,13 +114,13 @@ class RenameMethodsTests(SimpleTestCase):
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter('ignore')
 
-            class Deprecated(metaclass=RenameManagerMethods):
+            class Deprecated(six.with_metaclass(RenameManagerMethods)):
                 def old(self):
                     pass
 
             class Renamed(Deprecated):
                 def new(self):
-                    super().new()
+                    super(Renamed, self).new()
             warnings.simplefilter('always')
             renamed = Renamed()
             renamed.new()
@@ -134,17 +139,17 @@ class RenameMethodsTests(SimpleTestCase):
         with warnings.catch_warnings(record=True) as recorded:
             warnings.simplefilter('ignore')
 
-            class Renamed(metaclass=RenameManagerMethods):
+            class Renamed(six.with_metaclass(RenameManagerMethods)):
                 def new(self):
                     pass
 
-            class RenamedMixin:
+            class RenamedMixin(object):
                 def new(self):
-                    super().new()
+                    super(RenamedMixin, self).new()
 
-            class DeprecatedMixin:
+            class DeprecatedMixin(object):
                 def old(self):
-                    super().old()
+                    super(DeprecatedMixin, self).old()
 
             class Deprecated(DeprecatedMixin, RenamedMixin, Renamed):
                 pass
@@ -165,7 +170,7 @@ class RenameMethodsTests(SimpleTestCase):
 
 class DeprecationInstanceCheckTest(SimpleTestCase):
     def test_warning(self):
-        class Manager(metaclass=DeprecationInstanceCheck):
+        class Manager(six.with_metaclass(DeprecationInstanceCheck)):
             alternative = 'fake.path.Foo'
             deprecation_warning = RemovedInNextVersionWarning
 

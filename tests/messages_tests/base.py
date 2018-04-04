@@ -1,12 +1,12 @@
+from django import http
 from django.contrib.messages import constants, get_level, set_level, utils
 from django.contrib.messages.api import MessageFailure
 from django.contrib.messages.constants import DEFAULT_LEVELS
 from django.contrib.messages.storage import base, default_storage
 from django.contrib.messages.storage.base import Message
-from django.http import HttpRequest, HttpResponse
 from django.test import modify_settings, override_settings
 from django.urls import reverse
-from django.utils.translation import gettext_lazy
+from django.utils.translation import ugettext_lazy
 
 
 def add_level_messages(storage):
@@ -24,7 +24,7 @@ def add_level_messages(storage):
 
 class override_settings_tags(override_settings):
     def enable(self):
-        super().enable()
+        super(override_settings_tags, self).enable()
         # LEVEL_TAGS is a constant defined in the
         # django.contrib.messages.storage.base module, so after changing
         # settings.MESSAGE_TAGS, update that constant also.
@@ -32,11 +32,11 @@ class override_settings_tags(override_settings):
         base.LEVEL_TAGS = utils.get_level_tags()
 
     def disable(self):
-        super().disable()
+        super(override_settings_tags, self).disable()
         base.LEVEL_TAGS = self.old_level_tags
 
 
-class BaseTests:
+class BaseTests(object):
     storage_class = default_storage
     levels = {
         'debug': constants.DEBUG,
@@ -60,7 +60,7 @@ class BaseTests:
                 },
             }],
             ROOT_URLCONF='messages_tests.urls',
-            MESSAGE_TAGS={},
+            MESSAGE_TAGS='',
             MESSAGE_STORAGE='%s.%s' % (self.storage_class.__module__, self.storage_class.__name__),
             SESSION_SERIALIZER='django.contrib.sessions.serializers.JSONSerializer',
         )
@@ -70,10 +70,10 @@ class BaseTests:
         self.settings_override.disable()
 
     def get_request(self):
-        return HttpRequest()
+        return http.HttpRequest()
 
     def get_response(self):
-        return HttpResponse()
+        return http.HttpResponse()
 
     def get_storage(self, data=None):
         """
@@ -100,7 +100,7 @@ class BaseTests:
         storage = self.get_storage()
         response = self.get_response()
 
-        storage.add(constants.INFO, gettext_lazy('lazy message'))
+        storage.add(constants.INFO, ugettext_lazy('lazy message'))
         storage.update(response)
 
         storing = self.stored_messages_count(storage, response)
@@ -172,7 +172,7 @@ class BaseTests:
             'messages': ['Test message %d' % x for x in range(5)],
         }
         show_url = reverse('show_template_response')
-        for level in self.levels:
+        for level in self.levels.keys():
             add_url = reverse('add_template_response', args=(level,))
             response = self.client.post(add_url, data, follow=True)
             self.assertRedirects(response, show_url)
@@ -252,7 +252,7 @@ class BaseTests:
     def test_middleware_disabled_fail_silently(self):
         """
         When the middleware is disabled, an exception is not raised
-        if 'fail_silently' is True.
+        if 'fail_silently' = True
         """
         data = {
             'messages': ['Test message %d' % x for x in range(5)],
@@ -349,9 +349,8 @@ class BaseTests:
         storage = self.get_storage()
         storage.level = 0
         add_level_messages(storage)
-        storage.add(constants.INFO, 'A generic info message', extra_tags=None)
         tags = [msg.tags for msg in storage]
-        self.assertEqual(tags, ['info', '', 'extra-tag debug', 'warning', 'error', 'success', 'info'])
+        self.assertEqual(tags, ['info', '', 'extra-tag debug', 'warning', 'error', 'success'])
 
     def test_level_tag(self):
         storage = self.get_storage()

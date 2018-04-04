@@ -1,3 +1,6 @@
+from __future__ import unicode_literals
+
+import binascii
 import hashlib
 import unittest
 
@@ -131,13 +134,11 @@ class TestUtilsCryptoPBKDF2(unittest.TestCase):
     def test_public_vectors(self):
         for vector in self.rfc_vectors:
             result = pbkdf2(**vector['args'])
-            self.assertEqual(result.hex(), vector['result'])
+            self.assertEqual(binascii.hexlify(result).decode('ascii'),
+                             vector['result'])
 
     def test_regression_vectors(self):
         for vector in self.regression_vectors:
             result = pbkdf2(**vector['args'])
-            self.assertEqual(result.hex(), vector['result'])
-
-    def test_default_hmac_alg(self):
-        kwargs = {'password': b'password', 'salt': b'salt', 'iterations': 1, 'dklen': 20}
-        self.assertEqual(pbkdf2(**kwargs), hashlib.pbkdf2_hmac(hash_name=hashlib.sha256().name, **kwargs))
+            self.assertEqual(binascii.hexlify(result).decode('ascii'),
+                             vector['result'])

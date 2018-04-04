@@ -1,6 +1,9 @@
+# -*- coding: utf-8 -*-
 """
 Regression tests for the Test Client, especially the customized assertions.
 """
+from __future__ import unicode_literals
+
 import itertools
 import os
 
@@ -12,18 +15,21 @@ from django.template import (
 )
 from django.template.response import SimpleTemplateResponse
 from django.test import (
-    Client, SimpleTestCase, TestCase, modify_settings, override_settings,
+    Client, SimpleTestCase, TestCase, ignore_warnings, modify_settings,
+    override_settings,
 )
 from django.test.client import RedirectCycleError, RequestFactory, encode_file
-from django.test.utils import ContextList
+from django.test.utils import ContextList, str_prefix
 from django.urls import NoReverseMatch, reverse
-from django.utils.translation import gettext_lazy
+from django.utils._os import upath
+from django.utils.deprecation import RemovedInDjango20Warning
+from django.utils.translation import ugettext_lazy
 
 from .models import CustomUser
 from .views import CustomTestException
 
 
-class TestDataMixin:
+class TestDataMixin(object):
 
     @classmethod
     def setUpTestData(cls):
@@ -131,14 +137,14 @@ class AssertContainsTests(SimpleTestCase):
         # Regression test for #10183
         r = self.client.get('/check_unicode/')
         self.assertContains(r, 'さかき')
-        self.assertContains(r, b'\xe5\xb3\xa0'.decode())
+        self.assertContains(r, b'\xe5\xb3\xa0'.decode('utf-8'))
 
     def test_unicode_not_contains(self):
         "Unicode characters can be searched for, and not found in template context"
         # Regression test for #10183
         r = self.client.get('/check_unicode/')
         self.assertNotContains(r, 'はたけ')
-        self.assertNotContains(r, b'\xe3\x81\xaf\xe3\x81\x9f\xe3\x81\x91'.decode())
+        self.assertNotContains(r, b'\xe3\x81\xaf\xe3\x81\x9f\xe3\x81\x91'.decode('utf-8'))
 
     def test_binary_contains(self):
         r = self.client.get('/check_binary/')
@@ -154,11 +160,11 @@ class AssertContainsTests(SimpleTestCase):
 
     def test_nontext_contains(self):
         r = self.client.get('/no_template_view/')
-        self.assertContains(r, gettext_lazy('once'))
+        self.assertContains(r, ugettext_lazy('once'))
 
     def test_nontext_not_contains(self):
         r = self.client.get('/no_template_view/')
-        self.assertNotContains(r, gettext_lazy('never'))
+        self.assertNotContains(r, ugettext_lazy('never'))
 
     def test_assert_contains_renders_template_response(self):
         """
@@ -391,7 +397,7 @@ class AssertRedirectsTests(SimpleTestCase):
         self.assertEqual(response.redirect_chain[2], ('/no_template_view/', 302))
 
     def test_redirect_chain_to_non_existent(self):
-        "You can follow a chain to a nonexistent view."
+        "You can follow a chain to a non-existent view"
         response = self.client.get('/redirect_to_non_existent_view2/', {}, follow=True)
         self.assertRedirects(response, '/non_existent_view/', status_code=302, target_status_code=404)
 
@@ -508,6 +514,15 @@ class AssertRedirectsTests(SimpleTestCase):
             with self.assertRaises(AssertionError):
                 self.assertRedirects(response, 'http://testserver/secure_view/', status_code=302)
 
+    @ignore_warnings(category=RemovedInDjango20Warning)
+    def test_full_path_in_expected_urls(self):
+        """
+        Specifying a full URL as assertRedirects expected_url still
+        work as backwards compatible behavior until Django 2.0.
+        """
+        response = self.client.get('/redirect_view/')
+        self.assertRedirects(response, 'http://testserver/get_view/')
+
 
 @override_settings(ROOT_URLCONF='test_client_regress.urls')
 class AssertFormErrorTests(SimpleTestCase):
@@ -595,19 +610,21 @@ class AssertFormErrorTests(SimpleTestCase):
             self.assertFormError(response, 'form', 'email', 'Some error.')
         except AssertionError as e:
             self.assertIn(
-                "The field 'email' on form 'form' in context 0 does not "
-                "contain the error 'Some error.' (actual errors: "
-                "['Enter a valid email address.'])",
-                str(e)
+                str_prefix(
+                    "The field 'email' on form 'form' in context 0 does not "
+                    "contain the error 'Some error.' (actual errors: "
+                    "[%(_)s'Enter a valid email address.'])"
+                ), str(e)
             )
         try:
             self.assertFormError(response, 'form', 'email', 'Some error.', msg_prefix='abc')
         except AssertionError as e:
             self.assertIn(
-                "abc: The field 'email' on form 'form' in context 0 does "
-                "not contain the error 'Some error.' (actual errors: "
-                "['Enter a valid email address.'])",
-                str(e)
+                str_prefix(
+                    "abc: The field 'email' on form 'form' in context 0 does "
+                    "not contain the error 'Some error.' (actual errors: "
+                    "[%(_)s'Enter a valid email address.'])",
+                ), str(e)
             )
 
     def test_unknown_nonfield_error(self):
@@ -717,10 +734,10 @@ class AssertFormsetErrorTests(SimpleTestCase):
     def test_unknown_error(self):
         "An assertion is raised if the field doesn't contain the specified error"
         for prefix, kwargs in self.msg_prefixes:
-            msg = prefix + (
-                "The field 'email' on formset 'my_formset', form 0 "
+            msg = str_prefix(
+                prefix + "The field 'email' on formset 'my_formset', form 0 "
                 "in context 0 does not contain the error 'Some error.' "
-                "(actual errors: ['Enter a valid email address.'])"
+                "(actual errors: [%(_)s'Enter a valid email address.'])"
             )
             with self.assertRaisesMessage(AssertionError, msg):
                 self.assertFormsetError(self.response_form_errors, 'my_formset', 0, 'email', 'Some error.', **kwargs)
@@ -741,10 +758,10 @@ class AssertFormsetErrorTests(SimpleTestCase):
     def test_unknown_nonfield_error(self):
         "An assertion is raised if the formsets non-field errors doesn't contain the provided error."
         for prefix, kwargs in self.msg_prefixes:
-            msg = prefix + (
-                "The formset 'my_formset', form 0 in context 0 does not "
+            msg = str_prefix(
+                prefix + "The formset 'my_formset', form 0 in context 0 does not "
                 "contain the non-field error 'Some error.' (actual errors: "
-                "['Non-field error.'])"
+                "[%(_)s'Non-field error.'])"
             )
             with self.assertRaisesMessage(AssertionError, msg):
                 self.assertFormsetError(self.response_form_errors, 'my_formset', 0, None, 'Some error.', **kwargs)
@@ -764,10 +781,11 @@ class AssertFormsetErrorTests(SimpleTestCase):
     def test_unknown_nonform_error(self):
         "An assertion is raised if the formsets non-form errors doesn't contain the provided error."
         for prefix, kwargs in self.msg_prefixes:
-            msg = prefix + (
+            msg = str_prefix(
+                prefix +
                 "The formset 'my_formset' in context 0 does not contain the "
-                "non-form error 'Some error.' (actual errors: ['Forms in a set "
-                "must have distinct email addresses.'])"
+                "non-form error 'Some error.' (actual errors: [%(_)s'Forms "
+                "in a set must have distinct email addresses.'])"
             )
             with self.assertRaisesMessage(AssertionError, msg):
                 self.assertFormsetError(
@@ -870,7 +888,7 @@ class TemplateExceptionTests(SimpleTestCase):
 
     @override_settings(TEMPLATES=[{
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(os.path.dirname(__file__), 'bad_templates')],
+        'DIRS': [os.path.join(os.path.dirname(upath(__file__)), 'bad_templates')],
     }])
     def test_bad_404_template(self):
         "Errors found when rendering 404 error templates are re-raised"
@@ -1268,35 +1286,38 @@ class QueryStringTests(SimpleTestCase):
 
 
 @override_settings(ROOT_URLCONF='test_client_regress.urls')
-class PayloadEncodingTests(SimpleTestCase):
-    """Regression tests for #10571."""
+class UnicodePayloadTests(SimpleTestCase):
 
-    def test_simple_payload(self):
-        """A simple ASCII-only text can be POSTed."""
-        text = 'English: mountain pass'
-        response = self.client.post('/parse_encoded_text/', text, content_type='text/plain')
-        self.assertEqual(response.content, text.encode())
+    def test_simple_unicode_payload(self):
+        "A simple ASCII-only unicode JSON document can be POSTed"
+        # Regression test for #10571
+        json_str = '{"english": "mountain pass"}'
+        response = self.client.post("/parse_unicode_json/", json_str, content_type="application/json")
+        self.assertEqual(response.content, json_str.encode())
 
-    def test_utf8_payload(self):
-        """Non-ASCII data encoded as UTF-8 can be POSTed."""
-        text = 'dog: собака'
-        response = self.client.post('/parse_encoded_text/', text, content_type='text/plain; charset=utf-8')
-        self.assertEqual(response.content, text.encode())
+    def test_unicode_payload_utf8(self):
+        "A non-ASCII unicode data encoded as UTF-8 can be POSTed"
+        # Regression test for #10571
+        json_str = '{"dog": "собака"}'
+        response = self.client.post("/parse_unicode_json/", json_str, content_type="application/json; charset=utf-8")
+        self.assertEqual(response.content, json_str.encode('utf-8'))
 
-    def test_utf16_payload(self):
-        """Non-ASCII data encoded as UTF-16 can be POSTed."""
-        text = 'dog: собака'
-        response = self.client.post('/parse_encoded_text/', text, content_type='text/plain; charset=utf-16')
-        self.assertEqual(response.content, text.encode('utf-16'))
+    def test_unicode_payload_utf16(self):
+        "A non-ASCII unicode data encoded as UTF-16 can be POSTed"
+        # Regression test for #10571
+        json_str = '{"dog": "собака"}'
+        response = self.client.post("/parse_unicode_json/", json_str, content_type="application/json; charset=utf-16")
+        self.assertEqual(response.content, json_str.encode('utf-16'))
 
-    def test_non_utf_payload(self):
-        """Non-ASCII data as a non-UTF based encoding can be POSTed."""
-        text = 'dog: собака'
-        response = self.client.post('/parse_encoded_text/', text, content_type='text/plain; charset=koi8-r')
-        self.assertEqual(response.content, text.encode('koi8-r'))
+    def test_unicode_payload_non_utf(self):
+        "A non-ASCII unicode data as a non-UTF based encoding can be POSTed"
+        # Regression test for #10571
+        json_str = '{"dog": "собака"}'
+        response = self.client.post("/parse_unicode_json/", json_str, content_type="application/json; charset=koi8-r")
+        self.assertEqual(response.content, json_str.encode('koi8-r'))
 
 
-class DummyFile:
+class DummyFile(object):
     def __init__(self, filename):
         self.name = filename
 

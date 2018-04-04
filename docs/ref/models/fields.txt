@@ -61,6 +61,9 @@ set ``blank=True`` if you wish to permit empty values in forms, as the
     When using the Oracle database backend, the value ``NULL`` will be stored to
     denote the empty string regardless of this attribute.
 
+If you want to accept :attr:`~Field.null` values with :class:`BooleanField`,
+use :class:`NullBooleanField` instead.
+
 ``blank``
 ---------
 
@@ -312,6 +315,10 @@ This option is valid on all field types except :class:`ManyToManyField` and
 Note that when ``unique`` is ``True``, you don't need to specify
 :attr:`~Field.db_index`, because ``unique`` implies the creation of an index.
 
+.. versionchanged:: 1.11
+
+    In older versions, ``unique=True`` can't be used on :class:`FileField`.
+
 ``unique_for_date``
 -------------------
 
@@ -397,6 +404,8 @@ otherwise. See :ref:`automatic-primary-key-fields`.
 
 .. class:: BigAutoField(**options)
 
+.. versionadded:: 1.10
+
 A 64-bit integer, much like an :class:`AutoField` except that it is
 guaranteed to fit numbers from ``1`` to ``9223372036854775807``.
 
@@ -417,14 +426,8 @@ guaranteed to fit numbers from ``-9223372036854775808`` to
 
 A field to store raw binary data. It only supports ``bytes`` assignment. Be
 aware that this field has limited functionality. For example, it is not possible
-to filter a queryset on a ``BinaryField`` value.
-
-By default, ``BinaryField`` sets :attr:`~Field.editable` to ``False``, in which
-case it can't be included in a :class:`~django.forms.ModelForm`.
-
-.. versionchanged:: 2.1
-
-    Older versions don't allow setting ``editable`` to ``True``.
+to filter a queryset on a ``BinaryField`` value. It is also not possible to
+include a ``BinaryField`` in a :class:`~django.forms.ModelForm`.
 
 .. admonition:: Abusing ``BinaryField``
 
@@ -439,17 +442,14 @@ case it can't be included in a :class:`~django.forms.ModelForm`.
 
 A true/false field.
 
-The default form widget for this field is :class:`~django.forms.CheckboxInput`,
-or :class:`~django.forms.NullBooleanSelect` if :attr:`null=True <Field.null>`.
+The default form widget for this field is a
+:class:`~django.forms.CheckboxInput`.
+
+If you need to accept :attr:`~Field.null` values then use
+:class:`NullBooleanField` instead.
 
 The default value of ``BooleanField`` is ``None`` when :attr:`Field.default`
 isn't defined.
-
-.. versionchanged:: 2.1
-
-    In older versions, this field doesn't permit ``null=True``, so you have to
-    use :class:`NullBooleanField` instead. Using the latter is now discouraged
-    as it's likely to be deprecated in a future version of Django.
 
 ``CharField``
 -------------
@@ -475,6 +475,21 @@ The default form widget for this field is a :class:`~django.forms.TextInput`.
     database backends, you should be aware that there are restrictions on
     ``max_length`` for some backends. Refer to the :doc:`database backend
     notes </ref/databases>` for details.
+
+``CommaSeparatedIntegerField``
+------------------------------
+
+.. class:: CommaSeparatedIntegerField(max_length=None, **options)
+
+.. deprecated:: 1.9
+
+    This field is deprecated in favor of :class:`~django.db.models.CharField`
+    with ``validators=[``\ :func:`validate_comma_separated_integer_list
+    <django.core.validators.validate_comma_separated_integer_list>`\ ``]``.
+
+A field of integers separated by commas. As in :class:`CharField`, the
+:attr:`~CharField.max_length` argument is required and the note about database
+portability mentioned there should be heeded.
 
 ``DateField``
 -------------
@@ -1008,8 +1023,9 @@ values are stored as null.
 
 .. class:: NullBooleanField(**options)
 
-Like :class:`BooleanField` with ``null=True``. Use that instead of this field
-as it's likely to be deprecated in a future version of Django.
+Like a :class:`BooleanField`, but allows ``NULL`` as one of the options. Use
+this instead of a :class:`BooleanField` with ``null=True``. The default form
+widget for this field is a :class:`~django.forms.NullBooleanSelect`.
 
 ``PositiveIntegerField``
 ------------------------
@@ -1142,6 +1158,8 @@ Django also defines a set of fields that represent relations.
 
 A many-to-one relationship. Requires two positional arguments: the class to
 which the model is related and the :attr:`~ForeignKey.on_delete` option.
+(``on_delete`` isn't actually required, but not providing it gives a
+deprecation warning. It will be required in Django 2.0.)
 
 .. _recursive-relationships:
 
@@ -1248,6 +1266,11 @@ relation works.
             blank=True,
             null=True,
         )
+
+    .. deprecated:: 1.9
+
+        :attr:`~ForeignKey.on_delete` will become a required argument in Django
+        2.0. In older versions it defaults to ``CASCADE``.
 
 The possible values for :attr:`~ForeignKey.on_delete` are found in
 :mod:`django.db.models`:
@@ -1764,6 +1787,8 @@ Field API reference
 
     .. method:: rel_db_type(connection)
 
+        .. versionadded:: 1.10
+
         Returns the database column data type for fields such as ``ForeignKey``
         and ``OneToOneField`` that point to the :class:`Field`, taking
         into account the ``connection``.
@@ -1798,7 +1823,7 @@ Field API reference
 
     When loading data, :meth:`from_db_value` is used:
 
-    .. method:: from_db_value(value, expression, connection)
+    .. method:: from_db_value(value, expression, connection, context)
 
         Converts a value as returned by the database to a Python object. It is
         the reverse of :meth:`get_prep_value`.

@@ -11,7 +11,7 @@ QUnit.module('admin.inlines: tabular formsets', {
         $('#qunit-fixture').append($('#tabular-formset').text());
         this.table = $('table.inline');
         this.inlineRow = this.table.find('tr');
-        that.inlineRow.tabularFormset('table.inline tr', {
+        that.inlineRow.tabularFormset({
             prefix: 'first',
             addText: that.addText,
             deleteText: 'Remove'
@@ -60,7 +60,7 @@ QUnit.test('existing add button', function(assert) {
     this.inlineRow = this.table.find('tr');
     this.table.append('<i class="add-button"></i>');
     var addButton = this.table.find('.add-button');
-    this.inlineRow.tabularFormset('table.inline tr', {
+    this.inlineRow.tabularFormset({
         prefix: 'first',
         deleteText: 'Remove',
         addButton: addButton

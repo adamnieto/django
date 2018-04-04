@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.http import HttpResponse
 from django.middleware.csrf import get_token
 from django.template import Context, RequestContext, Template
@@ -8,7 +10,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 def post_form_view(request):
     """Return a POST form (without a token)."""
     return HttpResponse(content="""
-<html><body><h1>\u00a1Unicode!<form method="post"><input type="text"></form></body></html>
+<html><body><h1>\u00a1Unicode!<form method="post"><input type="text" /></form></body></html>
 """, mimetype='text/html')
 
 

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.template import Context, Template
 from django.test import SimpleTestCase
 from django.utils import translation

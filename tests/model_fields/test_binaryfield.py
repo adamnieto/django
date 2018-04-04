@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
-from django.db import models
 from django.test import TestCase
+from django.utils import six
 
 from .models import DataModel
 
@@ -9,7 +9,7 @@ class BinaryFieldTests(TestCase):
     binary_data = b'\x00\x46\xFE'
 
     def test_set_and_retrieve(self):
-        data_set = (self.binary_data, memoryview(self.binary_data))
+        data_set = (self.binary_data, six.memoryview(self.binary_data))
         for bdata in data_set:
             dm = DataModel(data=bdata)
             dm.save()
@@ -26,11 +26,3 @@ class BinaryFieldTests(TestCase):
         dm = DataModel(short_data=self.binary_data * 4)
         with self.assertRaises(ValidationError):
             dm.full_clean()
-
-    def test_editable(self):
-        field = models.BinaryField()
-        self.assertIs(field.editable, False)
-        field = models.BinaryField(editable=True)
-        self.assertIs(field.editable, True)
-        field = models.BinaryField(editable=False)
-        self.assertIs(field.editable, False)

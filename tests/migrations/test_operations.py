@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import unittest
 
 from django.core.exceptions import FieldDoesNotExist
@@ -19,7 +21,7 @@ except ImportError:
     sqlparse = None
 
 
-class Mixin:
+class Mixin(object):
     pass
 
 
@@ -28,16 +30,16 @@ class OperationTestBase(MigrationTestBase):
     Common functions to help test operations.
     """
 
-    def apply_operations(self, app_label, project_state, operations, atomic=True):
+    def apply_operations(self, app_label, project_state, operations):
         migration = Migration('name', app_label)
         migration.operations = operations
-        with connection.schema_editor(atomic=atomic) as editor:
+        with connection.schema_editor() as editor:
             return migration.apply(project_state, editor)
 
-    def unapply_operations(self, app_label, project_state, operations, atomic=True):
+    def unapply_operations(self, app_label, project_state, operations):
         migration = Migration('name', app_label)
         migration.operations = operations
-        with connection.schema_editor(atomic=atomic) as editor:
+        with connection.schema_editor() as editor:
             return migration.unapply(project_state, editor)
 
     def make_test_state(self, app_label, operation, **kwargs):
@@ -208,7 +210,7 @@ class OperationTests(OperationTestBase):
         definition = operation.deconstruct()
         self.assertEqual(definition[0], "CreateModel")
         self.assertEqual(definition[1], [])
-        self.assertEqual(sorted(definition[2]), ["fields", "name"])
+        self.assertEqual(sorted(definition[2].keys()), ["fields", "name"])
         # And default manager not in set
         operation = migrations.CreateModel("Foo", fields=[], managers=[("objects", models.Manager())])
         definition = operation.deconstruct()
@@ -409,7 +411,7 @@ class OperationTests(OperationTestBase):
             "ProxyPony",
             [],
             options={"proxy": True},
-            bases=("test_crprmo.Pony",),
+            bases=("test_crprmo.Pony", ),
         )
         self.assertEqual(operation.describe(), "Create proxy model ProxyPony")
         new_state = project_state.clone()
@@ -431,7 +433,7 @@ class OperationTests(OperationTestBase):
         definition = operation.deconstruct()
         self.assertEqual(definition[0], "CreateModel")
         self.assertEqual(definition[1], [])
-        self.assertEqual(sorted(definition[2]), ["bases", "fields", "name", "options"])
+        self.assertEqual(sorted(definition[2].keys()), ["bases", "fields", "name", "options"])
 
     def test_create_unmanaged_model(self):
         """
@@ -443,7 +445,7 @@ class OperationTests(OperationTestBase):
             "UnmanagedPony",
             [],
             options={"proxy": True},
-            bases=("test_crummo.Pony",),
+            bases=("test_crummo.Pony", ),
         )
         self.assertEqual(operation.describe(), "Create proxy model UnmanagedPony")
         new_state = project_state.clone()
@@ -561,8 +563,7 @@ class OperationTests(OperationTestBase):
             self.assertFKNotExists("test_rnmo_rider", ["pony_id"], ("test_rnmo_horse", "id"))
         # Migrate forwards
         new_state = project_state.clone()
-        atomic_rename = connection.features.supports_atomic_references_rename
-        new_state = self.apply_operations("test_rnmo", new_state, [operation], atomic=atomic_rename)
+        new_state = self.apply_operations("test_rnmo", new_state, [operation])
         # Test new state and database
         self.assertNotIn(("test_rnmo", "pony"), new_state.models)
         self.assertIn(("test_rnmo", "horse"), new_state.models)
@@ -574,7 +575,7 @@ class OperationTests(OperationTestBase):
             self.assertFKNotExists("test_rnmo_rider", ["pony_id"], ("test_rnmo_pony", "id"))
             self.assertFKExists("test_rnmo_rider", ["pony_id"], ("test_rnmo_horse", "id"))
         # Migrate backwards
-        original_state = self.unapply_operations("test_rnmo", project_state, [operation], atomic=atomic_rename)
+        original_state = self.unapply_operations("test_rnmo", project_state, [operation])
         # Test original state and database
         self.assertIn(("test_rnmo", "pony"), original_state.models)
         self.assertNotIn(("test_rnmo", "horse"), original_state.models)
@@ -635,8 +636,7 @@ class OperationTests(OperationTestBase):
         if connection.features.supports_foreign_keys:
             self.assertFKExists("test_rmwsrf_rider", ["friend_id"], ("test_rmwsrf_rider", "id"))
             self.assertFKNotExists("test_rmwsrf_rider", ["friend_id"], ("test_rmwsrf_horserider", "id"))
-        atomic_rename = connection.features.supports_atomic_references_rename
-        with connection.schema_editor(atomic=atomic_rename) as editor:
+        with connection.schema_editor() as editor:
             operation.database_forwards("test_rmwsrf", editor, project_state, new_state)
         self.assertTableNotExists("test_rmwsrf_rider")
         self.assertTableExists("test_rmwsrf_horserider")
@@ -644,7 +644,7 @@ class OperationTests(OperationTestBase):
             self.assertFKNotExists("test_rmwsrf_horserider", ["friend_id"], ("test_rmwsrf_rider", "id"))
             self.assertFKExists("test_rmwsrf_horserider", ["friend_id"], ("test_rmwsrf_horserider", "id"))
         # And test reversal
-        with connection.schema_editor(atomic=atomic_rename) as editor:
+        with connection.schema_editor() as editor:
             operation.database_backwards("test_rmwsrf", editor, new_state, project_state)
         self.assertTableExists("test_rmwsrf_rider")
         self.assertTableNotExists("test_rmwsrf_horserider")
@@ -677,7 +677,7 @@ class OperationTests(OperationTestBase):
             # and the foreign key on rider points to pony, not shetland pony
             self.assertFKExists("test_rmwsc_rider", ["pony_id"], ("test_rmwsc_pony", "id"))
             self.assertFKNotExists("test_rmwsc_rider", ["pony_id"], ("test_rmwsc_shetlandpony", "id"))
-        with connection.schema_editor(atomic=connection.features.supports_atomic_references_rename) as editor:
+        with connection.schema_editor() as editor:
             operation.database_forwards("test_rmwsc", editor, project_state, new_state)
         # Now we have a little horse table, not shetland pony
         self.assertTableNotExists("test_rmwsc_shetlandpony")
@@ -698,7 +698,7 @@ class OperationTests(OperationTestBase):
         ])
         project_state = self.apply_operations(app_label, project_state, operations=[
             migrations.RenameModel("ReflexivePony", "ReflexivePony2"),
-        ], atomic=connection.features.supports_atomic_references_rename)
+        ])
         Pony = project_state.apps.get_model(app_label, "ReflexivePony2")
         pony = Pony.objects.create()
         pony.ponies.add(pony)
@@ -722,7 +722,7 @@ class OperationTests(OperationTestBase):
 
         project_state = self.apply_operations(app_label, project_state, operations=[
             migrations.RenameModel("Pony", "Pony2"),
-        ], atomic=connection.features.supports_atomic_references_rename)
+        ])
         Pony = project_state.apps.get_model(app_label, "Pony2")
         Rider = project_state.apps.get_model(app_label, "Rider")
         pony = Pony.objects.create()
@@ -751,7 +751,7 @@ class OperationTests(OperationTestBase):
 
         project_state = self.apply_operations(app_label, project_state, operations=[
             migrations.RenameModel("Rider", "Rider2"),
-        ], atomic=connection.features.supports_atomic_references_rename)
+        ])
         Pony = project_state.apps.get_model(app_label, "Pony")
         Rider = project_state.apps.get_model(app_label, "Rider2")
         pony = Pony.objects.create()
@@ -1231,13 +1231,12 @@ class OperationTests(OperationTestBase):
         second_state = first_state.clone()
         operation = migrations.AlterModelTable(name='pony', table=None)
         operation.state_forwards(app_label, second_state)
-        atomic_rename = connection.features.supports_atomic_references_rename
-        with connection.schema_editor(atomic=atomic_rename) as editor:
+        with connection.schema_editor() as editor:
             operation.database_forwards(app_label, editor, first_state, second_state)
         self.assertTableExists(new_m2m_table)
         self.assertTableNotExists(original_m2m_table)
         # And test reversal
-        with connection.schema_editor(atomic=atomic_rename) as editor:
+        with connection.schema_editor() as editor:
             operation.database_backwards(app_label, editor, second_state, first_state)
         self.assertTableExists(original_m2m_table)
         self.assertTableNotExists(new_m2m_table)
@@ -1400,7 +1399,7 @@ class OperationTests(OperationTestBase):
         project_state = self.apply_operations(app_label, project_state, operations=[
             migrations.RenameField('Rider', 'id', 'id2'),
             migrations.AlterField('Pony', 'id', models.CharField(primary_key=True, max_length=99)),
-        ], atomic=connection.features.supports_atomic_references_rename)
+        ])
 
     def test_rename_field(self):
         """
@@ -1454,34 +1453,6 @@ class OperationTests(OperationTestBase):
         state.add_model(ModelState('app', 'model', []))
         with self.assertRaisesMessage(FieldDoesNotExist, "app.model has no field named 'field'"):
             migrations.RenameField('model', 'field', 'new_field').state_forwards('app', state)
-
-    def test_rename_referenced_field_state_forward(self):
-        state = ProjectState()
-        state.add_model(ModelState('app', 'Model', [
-            ('id', models.AutoField(primary_key=True)),
-            ('field', models.IntegerField(unique=True)),
-        ]))
-        state.add_model(ModelState('app', 'OtherModel', [
-            ('id', models.AutoField(primary_key=True)),
-            ('fk', models.ForeignKey('Model', models.CASCADE, to_field='field')),
-            ('fo', models.ForeignObject('Model', models.CASCADE, from_fields=('fk',), to_fields=('field',))),
-        ]))
-        operation = migrations.RenameField('Model', 'field', 'renamed')
-        new_state = state.clone()
-        operation.state_forwards('app', new_state)
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[1][1].remote_field.field_name, 'renamed')
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[1][1].from_fields, ['self'])
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[1][1].to_fields, ('renamed',))
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[2][1].from_fields, ('fk',))
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[2][1].to_fields, ('renamed',))
-        operation = migrations.RenameField('OtherModel', 'fk', 'renamed_fk')
-        new_state = state.clone()
-        operation.state_forwards('app', new_state)
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[1][1].remote_field.field_name, 'renamed')
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[1][1].from_fields, ('self',))
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[1][1].to_fields, ('renamed',))
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[2][1].from_fields, ('renamed_fk',))
-        self.assertEqual(new_state.models['app', 'othermodel'].fields[2][1].to_fields, ('renamed',))
 
     def test_alter_unique_together(self):
         """
@@ -2053,7 +2024,7 @@ class OperationTests(OperationTestBase):
             operation.database_backwards("test_runpython", editor, project_state, new_state)
         self.assertEqual(project_state.apps.get_model("test_runpython", "Pony").objects.count(), 0)
         # Now test we can't use a string
-        with self.assertRaisesMessage(ValueError, 'RunPython must be supplied with a callable'):
+        with self.assertRaises(ValueError):
             migrations.RunPython("print 'ahahaha'")
         # And deconstruction
         definition = operation.deconstruct()
@@ -2117,11 +2088,10 @@ class OperationTests(OperationTestBase):
             Pony.objects.create(pink=1, weight=3.55)
             raise ValueError("Adrian hates ponies.")
 
-        # Verify atomicity when applying.
         atomic_migration = Migration("test", "test_runpythonatomic")
-        atomic_migration.operations = [migrations.RunPython(inner_method, reverse_code=inner_method)]
+        atomic_migration.operations = [migrations.RunPython(inner_method)]
         non_atomic_migration = Migration("test", "test_runpythonatomic")
-        non_atomic_migration.operations = [migrations.RunPython(inner_method, reverse_code=inner_method, atomic=False)]
+        non_atomic_migration.operations = [migrations.RunPython(inner_method, atomic=False)]
         # If we're a fully-transactional database, both versions should rollback
         if connection.features.can_rollback_ddl:
             self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 0)
@@ -2144,35 +2114,11 @@ class OperationTests(OperationTestBase):
                 with connection.schema_editor() as editor:
                     non_atomic_migration.apply(project_state, editor)
             self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 1)
-        # Reset object count to zero and verify atomicity when unapplying.
-        project_state.apps.get_model("test_runpythonatomic", "Pony").objects.all().delete()
-        # On a fully-transactional database, both versions rollback.
-        if connection.features.can_rollback_ddl:
-            self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 0)
-            with self.assertRaises(ValueError):
-                with connection.schema_editor() as editor:
-                    atomic_migration.unapply(project_state, editor)
-            self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 0)
-            with self.assertRaises(ValueError):
-                with connection.schema_editor() as editor:
-                    non_atomic_migration.unapply(project_state, editor)
-            self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 0)
-        # Otherwise, the non-atomic operation leaves a row there.
-        else:
-            self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 0)
-            with self.assertRaises(ValueError):
-                with connection.schema_editor() as editor:
-                    atomic_migration.unapply(project_state, editor)
-            self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 0)
-            with self.assertRaises(ValueError):
-                with connection.schema_editor() as editor:
-                    non_atomic_migration.unapply(project_state, editor)
-            self.assertEqual(project_state.apps.get_model("test_runpythonatomic", "Pony").objects.count(), 1)
-        # Verify deconstruction.
+        # And deconstruction
         definition = non_atomic_migration.operations[0].deconstruct()
         self.assertEqual(definition[0], "RunPython")
         self.assertEqual(definition[1], [])
-        self.assertEqual(sorted(definition[2]), ["atomic", "code", "reverse_code"])
+        self.assertEqual(sorted(definition[2]), ["atomic", "code"])
 
     def test_run_python_related_assignment(self):
         """

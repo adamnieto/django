@@ -5,12 +5,13 @@ import sys
 import tempfile
 import unittest
 
+from django.utils._os import upath
 from django.utils.archive import Archive, extract
 
-TEST_DIR = os.path.join(os.path.dirname(__file__), 'archives')
+TEST_DIR = os.path.join(os.path.dirname(upath(__file__)), 'archives')
 
 
-class ArchiveTester:
+class ArchiveTester(object):
     archive = None
 
     def setUp(self):

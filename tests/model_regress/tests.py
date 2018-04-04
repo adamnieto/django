@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import datetime
 from operator import attrgetter
 
@@ -5,11 +7,12 @@ from django.core.exceptions import ValidationError
 from django.db import router
 from django.db.models.sql import InsertQuery
 from django.test import TestCase, skipUnlessDBFeature
+from django.utils import six
 from django.utils.timezone import get_fixed_timezone
 
 from .models import (
-    Article, Department, Event, Model1, Model2, Model3, NonAutoPK, Party,
-    Worker,
+    Article, BrokenUnicodeMethod, Department, Event, Model1, Model2, Model3,
+    NonAutoPK, Party, Worker,
 )
 
 
@@ -52,9 +55,10 @@ class ModelTests(TestCase):
         # An empty choice field should return None for the display name.
         self.assertIs(a.get_status_display(), None)
 
-        # Empty strings should be returned as string
+        # Empty strings should be returned as Unicode
         a = Article.objects.get(pk=a.pk)
         self.assertEqual(a.misc_data, '')
+        self.assertIs(type(a.misc_data), six.text_type)
 
     def test_long_textfield(self):
         # TextFields can hold more than 4000 characters (this was broken in
@@ -184,11 +188,16 @@ class ModelTests(TestCase):
         # Check Department and Worker (non-default PK type)
         d = Department.objects.create(id=10, name="IT")
         w = Worker.objects.create(department=d, name="Full-time")
-        self.assertEqual(str(w), "Full-time")
+        self.assertEqual(six.text_type(w), "Full-time")
+
+    def test_broken_unicode(self):
+        # Models with broken unicode methods should still have a printable repr
+        b = BrokenUnicodeMethod.objects.create(name="Jerry")
+        self.assertEqual(repr(b), "<BrokenUnicodeMethod: [Bad Unicode data]>")
 
     @skipUnlessDBFeature("supports_timezones")
     def test_timezones(self):
-        # Saving and updating with timezone-aware datetime Python objects.
+        # Saving an updating with timezone-aware datetime Python objects.
         # Regression test for #10443.
         # The idea is that all these creations and saving should work without
         # crashing. It's not rocket science.

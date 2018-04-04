@@ -15,7 +15,7 @@ class PostgreSQLTestCase(TestCase):
         from django.contrib.postgres.signals import register_type_handlers
 
         connection_created.disconnect(register_type_handlers)
-        super().tearDownClass()
+        super(PostgreSQLTestCase, cls).tearDownClass()
 
 
 @unittest.skipUnless(connection.vendor == 'postgresql', "PostgreSQL specific tests")

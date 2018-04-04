@@ -11,13 +11,17 @@ Model inheritance exists in two varieties:
 
 Both styles are demonstrated here.
 """
+from __future__ import unicode_literals
+
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 #
 # Abstract base classes
 #
 
 
+@python_2_unicode_compatible
 class CommonInfo(models.Model):
     name = models.CharField(max_length=50)
     age = models.PositiveIntegerField()
@@ -49,6 +53,7 @@ class Post(models.Model):
     title = models.CharField(max_length=50)
 
 
+@python_2_unicode_compatible
 class Attachment(models.Model):
     post = models.ForeignKey(
         Post,
@@ -77,6 +82,7 @@ class Link(Attachment):
 # Multi-table inheritance
 #
 
+@python_2_unicode_compatible
 class Chef(models.Model):
     name = models.CharField(max_length=50)
 
@@ -84,6 +90,7 @@ class Chef(models.Model):
         return "%s the chef" % self.name
 
 
+@python_2_unicode_compatible
 class Place(models.Model):
     name = models.CharField(max_length=50)
     address = models.CharField(max_length=80)
@@ -100,6 +107,7 @@ class Rating(models.Model):
         ordering = ['-rating']
 
 
+@python_2_unicode_compatible
 class Restaurant(Place, Rating):
     serves_hot_dogs = models.BooleanField(default=False)
     serves_pizza = models.BooleanField(default=False)
@@ -112,6 +120,7 @@ class Restaurant(Place, Rating):
         return "%s the restaurant" % self.name
 
 
+@python_2_unicode_compatible
 class ItalianRestaurant(Restaurant):
     serves_gnocchi = models.BooleanField(default=False)
 
@@ -119,6 +128,7 @@ class ItalianRestaurant(Restaurant):
         return "%s the italian restaurant" % self.name
 
 
+@python_2_unicode_compatible
 class Supplier(Place):
     customers = models.ManyToManyField(Restaurant, related_name='provider')
 
@@ -126,6 +136,7 @@ class Supplier(Place):
         return "%s the supplier" % self.name
 
 
+@python_2_unicode_compatible
 class ParkingLot(Place):
     # An explicit link to the parent (we can control the attribute name).
     parent = models.OneToOneField(Place, models.CASCADE, primary_key=True, parent_link=True)
@@ -156,10 +167,10 @@ class NamedURL(models.Model):
         abstract = True
 
 
-class Mixin:
+class Mixin(object):
     def __init__(self):
         self.other_attr = 1
-        super().__init__()
+        super(Mixin, self).__init__()
 
 
 class MixinModel(models.Model, Mixin):
@@ -178,7 +189,6 @@ class GrandParent(models.Model):
     first_name = models.CharField(max_length=80)
     last_name = models.CharField(max_length=80)
     email = models.EmailField(unique=True)
-    place = models.ForeignKey(Place, models.CASCADE, null=True, related_name='+')
 
     class Meta:
         unique_together = ('first_name', 'last_name')

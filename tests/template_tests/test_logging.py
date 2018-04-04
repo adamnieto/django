@@ -1,12 +1,15 @@
+from __future__ import unicode_literals
+
 import logging
 
-from django.template import Engine, Variable, VariableDoesNotExist
-from django.test import SimpleTestCase
+from django.template import Context, Engine, Variable, VariableDoesNotExist
+from django.test import SimpleTestCase, ignore_warnings
+from django.utils.deprecation import RemovedInDjango21Warning
 
 
 class TestHandler(logging.Handler):
     def __init__(self):
-        super().__init__()
+        super(TestHandler, self).__init__()
         self.log_record = None
 
     def emit(self, record):
@@ -30,7 +33,7 @@ class VariableResolveLoggingTests(BaseTemplateLoggingTestCase):
     loglevel = logging.DEBUG
 
     def test_log_on_variable_does_not_exist_silent(self):
-        class TestObject:
+        class TestObject(object):
             class SilentDoesNotExist(Exception):
                 silent_variable_failure = True
 
@@ -74,9 +77,52 @@ class VariableResolveLoggingTests(BaseTemplateLoggingTestCase):
         raised_exception = self.test_handler.log_record.exc_info[1]
         self.assertEqual(
             str(raised_exception),
-            "Failed lookup for key [author] in {'section': 'News'}"
+            'Failed lookup for key [author] in %r' % ("{%r: %r}" % ('section', 'News'))
         )
 
     def test_no_log_when_variable_exists(self):
         Variable('article.section').resolve({'article': {'section': 'News'}})
         self.assertIsNone(self.test_handler.log_record)
+
+
+class IncludeNodeLoggingTests(BaseTemplateLoggingTestCase):
+    loglevel = logging.WARN
+
+    @classmethod
+    def setUpClass(cls):
+        super(IncludeNodeLoggingTests, cls).setUpClass()
+        cls.engine = Engine(loaders=[
+            ('django.template.loaders.locmem.Loader', {
+                'child': '{{ raises_exception }}',
+            }),
+        ], debug=False)
+
+        def error_method():
+            raise IndexError("some generic exception")
+
+        cls.ctx = Context({'raises_exception': error_method})
+
+    def test_logs_exceptions_during_rendering_with_debug_disabled(self):
+        template = self.engine.from_string('{% include "child" %}')
+        template.name = 'template_name'
+        with ignore_warnings(category=RemovedInDjango21Warning):
+            self.assertEqual(template.render(self.ctx), '')
+        self.assertEqual(
+            self.test_handler.log_record.getMessage(),
+            "Exception raised while rendering {% include %} for template "
+            "'template_name'. Empty string rendered instead."
+        )
+        self.assertIsNotNone(self.test_handler.log_record.exc_info)
+        self.assertEqual(self.test_handler.log_record.levelno, logging.WARN)
+
+    def test_logs_exceptions_during_rendering_with_no_template_name(self):
+        template = self.engine.from_string('{% include "child" %}')
+        with ignore_warnings(category=RemovedInDjango21Warning):
+            self.assertEqual(template.render(self.ctx), '')
+        self.assertEqual(
+            self.test_handler.log_record.getMessage(),
+            "Exception raised while rendering {% include %} for template "
+            "'unknown'. Empty string rendered instead."
+        )
+        self.assertIsNotNone(self.test_handler.log_record.exc_info)
+        self.assertEqual(self.test_handler.log_record.levelno, logging.WARN)

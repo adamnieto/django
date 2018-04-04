@@ -17,4 +17,5 @@ class CustomFieldTest(SimpleTestCase):
             other_field = models.IntegerField()
 
         field = Model._meta.get_field('field')
-        self.assertEqual(field.check(), [])
+        errors = field.check()
+        self.assertEqual(errors, [])

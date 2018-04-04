@@ -1,30 +1,26 @@
+from __future__ import unicode_literals
+
 from datetime import date
 
 from django import forms
-from django.contrib.admin.models import ADDITION, CHANGE, DELETION, LogEntry
+from django.contrib.admin.models import LogEntry
 from django.contrib.admin.options import (
     HORIZONTAL, VERTICAL, ModelAdmin, TabularInline,
-    get_content_type_for_model,
 )
 from django.contrib.admin.sites import AdminSite
-from django.contrib.admin.widgets import (
-    AdminDateWidget, AdminRadioSelect, AutocompleteSelect,
-    AutocompleteSelectMultiple,
-)
+from django.contrib.admin.widgets import AdminDateWidget, AdminRadioSelect
 from django.contrib.auth.models import User
-from django.db import models
 from django.forms.widgets import Select
 from django.test import SimpleTestCase, TestCase
-from django.test.utils import isolate_apps
 
-from .models import Band, Concert, Song
+from .models import Band, Concert
 
 
-class MockRequest:
+class MockRequest(object):
     pass
 
 
-class MockSuperUser:
+class MockSuperUser(object):
     def has_perm(self, perm):
         return True
 
@@ -42,10 +38,6 @@ class ModelAdminTests(TestCase):
             sign_date=date(1965, 1, 1),
         )
         self.site = AdminSite()
-
-    def test_modeladmin_str(self):
-        ma = ModelAdmin(Band, self.site)
-        self.assertEqual(str(ma), 'modeladmin.ModelAdmin')
 
     # form/fields/fieldsets interaction ##############################
 
@@ -99,33 +91,6 @@ class ModelAdminTests(TestCase):
 
         ma = BandAdmin(Band, self.site)
         self.assertTrue(ma.lookup_allowed('name__nonexistent', 'test_value'))
-
-    @isolate_apps('modeladmin')
-    def test_lookup_allowed_onetoone(self):
-        class Department(models.Model):
-            code = models.CharField(max_length=4, unique=True)
-
-        class Employee(models.Model):
-            department = models.ForeignKey(Department, models.CASCADE, to_field="code")
-
-        class EmployeeProfile(models.Model):
-            employee = models.OneToOneField(Employee, models.CASCADE)
-
-        class EmployeeInfo(models.Model):
-            employee = models.OneToOneField(Employee, models.CASCADE)
-            description = models.CharField(max_length=100)
-
-        class EmployeeProfileAdmin(ModelAdmin):
-            list_filter = [
-                'employee__employeeinfo__description',
-                'employee__department__code',
-            ]
-
-        ma = EmployeeProfileAdmin(EmployeeProfile, self.site)
-        # Reverse OneToOneField
-        self.assertIs(ma.lookup_allowed('employee__employeeinfo__description', 'test_value'), True)
-        # OneToOneField and ForeignKey
-        self.assertIs(ma.lookup_allowed('employee__department__code', 'test_value'), True)
 
     def test_field_arguments(self):
         # If fields is specified, fieldsets_add and fieldsets_change should
@@ -229,7 +194,7 @@ class ModelAdminTests(TestCase):
             name = forms.CharField()
 
             class Meta:
-                exclude = ()
+                exclude = tuple()
                 model = Band
 
         class BandAdmin(ModelAdmin):
@@ -357,7 +322,7 @@ class ModelAdminTests(TestCase):
 
             def get_form(self, request, obj=None, **kwargs):
                 kwargs['exclude'] = ['bio']
-                return super().get_form(request, obj, **kwargs)
+                return super(BandAdmin, self).get_form(request, obj, **kwargs)
 
         ma = BandAdmin(Band, self.site)
         self.assertEqual(list(ma.get_form(request).base_fields), ['name', 'sign_date'])
@@ -380,7 +345,7 @@ class ModelAdminTests(TestCase):
 
             def get_formset(self, request, obj=None, **kwargs):
                 kwargs['exclude'] = ['opening_band']
-                return super().get_formset(request, obj, **kwargs)
+                return super(ConcertInline, self).get_formset(request, obj, **kwargs)
 
         class BandAdmin(ModelAdmin):
             inlines = [ConcertInline]
@@ -457,7 +422,7 @@ class ModelAdminTests(TestCase):
 
         class AdminConcertForm(forms.ModelForm):
             def __init__(self, *args, **kwargs):
-                super().__init__(*args, **kwargs)
+                super(AdminConcertForm, self).__init__(*args, **kwargs)
                 self.fields["main_band"].queryset = Band.objects.filter(name='The Doors')
 
         class ConcertAdminWithForm(ModelAdmin):
@@ -492,7 +457,7 @@ class ModelAdminTests(TestCase):
             def get_formset(self, request, obj=None, **kwargs):
                 if obj:
                     kwargs['form'] = CustomConcertForm
-                return super().get_formset(request, obj, **kwargs)
+                return super(ConcertInline, self).get_formset(request, obj, **kwargs)
 
         class BandAdmin(ModelAdmin):
             inlines = [ConcertInline]
@@ -619,81 +584,36 @@ class ModelAdminTests(TestCase):
         ma = ModelAdmin(Band, self.site)
         mock_request = MockRequest()
         mock_request.user = User.objects.create(username='bill')
-        content_type = get_content_type_for_model(self.band)
-        tests = (
-            (ma.log_addition, ADDITION, {'added': {}}),
-            (ma.log_change, CHANGE, {'changed': {'fields': ['name', 'bio']}}),
-            (ma.log_deletion, DELETION, str(self.band)),
-        )
-        for method, flag, message in tests:
-            with self.subTest(name=method.__name__):
-                created = method(mock_request, self.band, message)
-                fetched = LogEntry.objects.filter(action_flag=flag).latest('id')
-                self.assertEqual(created, fetched)
-                self.assertEqual(fetched.action_flag, flag)
-                self.assertEqual(fetched.content_type, content_type)
-                self.assertEqual(fetched.object_id, str(self.band.pk))
-                self.assertEqual(fetched.user, mock_request.user)
-                if flag == DELETION:
-                    self.assertEqual(fetched.change_message, '')
-                    self.assertEqual(fetched.object_repr, message)
-                else:
-                    self.assertEqual(fetched.change_message, str(message))
-                    self.assertEqual(fetched.object_repr, str(self.band))
-
-    def test_get_autocomplete_fields(self):
-        class NameAdmin(ModelAdmin):
-            search_fields = ['name']
-
-        class SongAdmin(ModelAdmin):
-            autocomplete_fields = ['featuring']
-            fields = ['featuring', 'band']
-
-        class OtherSongAdmin(SongAdmin):
-            def get_autocomplete_fields(self, request):
-                return ['band']
-
-        self.site.register(Band, NameAdmin)
-        try:
-            # Uses autocomplete_fields if not overridden.
-            model_admin = SongAdmin(Song, self.site)
-            form = model_admin.get_form(request)()
-            self.assertIsInstance(form.fields['featuring'].widget.widget, AutocompleteSelectMultiple)
-            # Uses overridden get_autocomplete_fields
-            model_admin = OtherSongAdmin(Song, self.site)
-            form = model_admin.get_form(request)()
-            self.assertIsInstance(form.fields['band'].widget.widget, AutocompleteSelect)
-        finally:
-            self.site.unregister(Band)
-
-    def test_get_deleted_objects(self):
-        mock_request = MockRequest()
-        mock_request.user = User.objects.create_superuser(username='bob', email='bob@test.com', password='test')
-        ma = ModelAdmin(Band, self.site)
-        deletable_objects, model_count, perms_needed, protected = ma.get_deleted_objects([self.band], request)
-        self.assertEqual(deletable_objects, ['Band: The Doors'])
-        self.assertEqual(model_count, {'bands': 1})
-        self.assertEqual(perms_needed, set())
-        self.assertEqual(protected, [])
+        self.assertEqual(ma.log_addition(mock_request, self.band, 'added'), LogEntry.objects.latest('id'))
+        self.assertEqual(ma.log_change(mock_request, self.band, 'changed'), LogEntry.objects.latest('id'))
+        self.assertEqual(ma.log_deletion(mock_request, self.band, 'deleted'), LogEntry.objects.latest('id'))
 
 
 class ModelAdminPermissionTests(SimpleTestCase):
 
-    class MockUser:
+    class MockUser(object):
         def has_module_perms(self, app_label):
-            return app_label == 'modeladmin'
+            if app_label == "modeladmin":
+                return True
+            return False
 
     class MockAddUser(MockUser):
         def has_perm(self, perm):
-            return perm == 'modeladmin.add_band'
+            if perm == "modeladmin.add_band":
+                return True
+            return False
 
     class MockChangeUser(MockUser):
         def has_perm(self, perm):
-            return perm == 'modeladmin.change_band'
+            if perm == "modeladmin.change_band":
+                return True
+            return False
 
     class MockDeleteUser(MockUser):
         def has_perm(self, perm):
-            return perm == 'modeladmin.delete_band'
+            if perm == "modeladmin.delete_band":
+                return True
+            return False
 
     def test_has_add_permission(self):
         """

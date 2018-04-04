@@ -27,9 +27,8 @@ models. For example, here's the user module from Django's built-in
     has an important caveat: your model's ``delete()`` method will not be
     called.
 
-    If you wish to override this behavior, you can override
-    :meth:`.ModelAdmin.delete_queryset` or write a custom action which does
-    deletion in your preferred manner -- for example, by calling
+    If you wish to override this behavior, simply write a custom action which
+    accomplishes deletion in your preferred manner -- for example, by calling
     ``Model.delete()`` for each of the selected items.
 
     For more background on bulk deletion, see the documentation on :ref:`object
@@ -58,7 +57,7 @@ simple news application with an ``Article`` model::
         body = models.TextField()
         status = models.CharField(max_length=1, choices=STATUS_CHOICES)
 
-        def __str__(self):
+        def __str__(self):              # __unicode__ on Python 2
             return self.title
 
 A common task we might perform with a model like this is to update an
@@ -352,7 +351,7 @@ Conditionally enabling or disabling actions
             ...
 
             def get_actions(self, request):
-                actions = super().get_actions(request)
+                actions = super(MyModelAdmin, self).get_actions(request)
                 if request.user.username[0].upper() != 'J':
                     if 'delete_selected' in actions:
                         del actions['delete_selected']

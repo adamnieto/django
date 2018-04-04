@@ -1,4 +1,4 @@
-from urllib.parse import quote
+from __future__ import unicode_literals
 
 from django.contrib.contenttypes.fields import (
     GenericForeignKey, GenericRelation,
@@ -6,8 +6,11 @@ from django.contrib.contenttypes.fields import (
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import SiteManager
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
+from django.utils.http import urlquote
 
 
+@python_2_unicode_compatible
 class Site(models.Model):
     domain = models.CharField(max_length=100)
     objects = SiteManager()
@@ -16,6 +19,7 @@ class Site(models.Model):
         return self.domain
 
 
+@python_2_unicode_compatible
 class Author(models.Model):
     name = models.CharField(max_length=100)
 
@@ -26,6 +30,7 @@ class Author(models.Model):
         return '/authors/%s/' % self.id
 
 
+@python_2_unicode_compatible
 class Article(models.Model):
     title = models.CharField(max_length=100)
     slug = models.SlugField()
@@ -36,6 +41,7 @@ class Article(models.Model):
         return self.title
 
 
+@python_2_unicode_compatible
 class SchemeIncludedURL(models.Model):
     url = models.URLField(max_length=100)
 
@@ -55,6 +61,7 @@ class ProxyModel(ConcreteModel):
         proxy = True
 
 
+@python_2_unicode_compatible
 class FooWithoutUrl(models.Model):
     """
     Fake model not defining ``get_absolute_url`` for
@@ -73,7 +80,7 @@ class FooWithUrl(FooWithoutUrl):
     """
 
     def get_absolute_url(self):
-        return "/users/%s/" % quote(self.name)
+        return "/users/%s/" % urlquote(self.name)
 
 
 class FooWithBrokenAbsoluteUrl(FooWithoutUrl):
@@ -90,6 +97,7 @@ class Question(models.Model):
     answer_set = GenericRelation('Answer')
 
 
+@python_2_unicode_compatible
 class Answer(models.Model):
     text = models.CharField(max_length=200)
     content_type = models.ForeignKey(ContentType, models.CASCADE)
@@ -103,6 +111,7 @@ class Answer(models.Model):
         return self.text
 
 
+@python_2_unicode_compatible
 class Post(models.Model):
     """An ordered tag on an item."""
     title = models.CharField(max_length=200)
@@ -118,6 +127,7 @@ class Post(models.Model):
         return self.title
 
 
+@python_2_unicode_compatible
 class ModelWithNullFKToSite(models.Model):
     title = models.CharField(max_length=200)
     site = models.ForeignKey(Site, null=True, on_delete=models.CASCADE)
@@ -127,4 +137,4 @@ class ModelWithNullFKToSite(models.Model):
         return self.title
 
     def get_absolute_url(self):
-        return '/title/%s/' % quote(self.title)
+        return '/title/%s/' % urlquote(self.title)

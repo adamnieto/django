@@ -29,11 +29,12 @@ class DeprecatedFieldsTests(SimpleTestCase):
         model = CommaSeparatedIntegerModel()
         self.assertEqual(
             model.check(),
-            [checks.Error(
-                'CommaSeparatedIntegerField is removed except for support in '
-                'historical migrations.',
+            [checks.Warning(
+                'CommaSeparatedIntegerField has been deprecated. Support '
+                'for it (except in historical migrations) will be removed '
+                'in Django 2.0.',
                 hint='Use CharField(validators=[validate_comma_separated_integer_list]) instead.',
                 obj=CommaSeparatedIntegerModel._meta.get_field('csi'),
-                id='fields.E901',
+                id='fields.W901',
             )],
         )

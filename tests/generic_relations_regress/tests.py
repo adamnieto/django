@@ -131,12 +131,10 @@ class GenericRelationTests(TestCase):
         note = Note(note='Deserve a bonus', content_object=team1)
         note.save()
 
-    def test_target_model_bool_false(self):
-        """
-        Saving a model with a GenericForeignKey to a model instance whose
-        __bool__ method returns False (Guild.__bool__() here) shouldn't fail
-        (#13085).
-        """
+    def test_target_model_nonzero_false(self):
+        """Test related to #13085"""
+        # __nonzero__() returns False -- This actually doesn't currently fail.
+        # This test validates that
         g1 = Guild.objects.create(name='First guild')
         note = Note(note='Note for guild', content_object=g1)
         note.save()
@@ -263,13 +261,3 @@ class GenericRelationTests(TestCase):
         place = Place.objects.create()
         Link.objects.create(content_object=place)
         self.assertEqual(Place.objects.get(link_proxy__object_id=place.id), place)
-
-    def test_generic_reverse_relation_with_mti(self):
-        """
-        Filtering with a reverse generic relation, where the GenericRelation
-        comes from multi-table inheritance.
-        """
-        place = Place.objects.create(name='Test Place')
-        link = Link.objects.create(content_object=place)
-        result = Link.objects.filter(places=place)
-        self.assertCountEqual(result, [link])

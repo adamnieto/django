@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.core.management import call_command
 from django.db import connection
 from django.test import TransactionTestCase

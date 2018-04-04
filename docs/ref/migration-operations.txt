@@ -197,6 +197,8 @@ is set, its column name).
 
 .. class:: AddIndex(model_name, index)
 
+.. versionadded:: 1.11
+
 Creates an index in the database table for the model with ``model_name``.
 ``index`` is an instance of the :class:`~django.db.models.Index` class.
 
@@ -204,6 +206,8 @@ Creates an index in the database table for the model with ``model_name``.
 ---------------
 
 .. class:: RemoveIndex(model_name, name)
+
+.. versionadded:: 1.11
 
 Removes the index named ``name`` from the model with ``model_name``.
 
@@ -277,6 +281,10 @@ be removed (elided) when :ref:`squashing migrations <migration-squashing>`.
 
 .. _sqlparse: https://pypi.python.org/pypi/sqlparse
 
+.. versionadded:: 1.10
+
+    The ``elidable`` argument was added.
+
 ``RunPython``
 -------------
 
@@ -305,6 +313,9 @@ You are advised to write the code as a separate function above the ``Migration``
 class in the migration file, and just pass it to ``RunPython``. Here's an
 example of using ``RunPython`` to create some initial objects on a ``Country``
 model::
+
+    # -*- coding: utf-8 -*-
+    from __future__ import unicode_literals
 
     from django.db import migrations
 
@@ -389,6 +400,15 @@ if ``atomic=True`` is passed to the ``RunPython`` operation.
     you want the operation not to do anything in the given direction. This is
     especially useful in making the operation reversible.
 
+.. versionadded:: 1.10
+
+    The ``elidable`` argument was added.
+
+.. versionchanged:: 1.10
+
+    The ``atomic`` argument default was changed to ``None``, indicating that
+    the atomicity is controlled by the ``atomic`` attribute of the migration.
+
 ``SeparateDatabaseAndState``
 ----------------------------
 
@@ -472,6 +492,10 @@ Some things to note:
         # reloaded in case any are delayed.
         from_state.clear_delayed_apps_cache()
         ...
+
+  .. versionadded:: 1.11
+
+    This requirement and the ``clear_delayed_apps_cache()`` method is new.
 
 * ``to_state`` in the database_backwards method is the *older* state; that is,
   the one that will be the current state once the migration has finished reversing.

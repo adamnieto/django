@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import time
 import traceback
 from datetime import date, datetime, timedelta
@@ -6,8 +8,10 @@ from threading import Thread
 from django.core.exceptions import FieldError
 from django.db import DatabaseError, IntegrityError, connection
 from django.test import (
-    SimpleTestCase, TestCase, TransactionTestCase, skipUnlessDBFeature,
+    SimpleTestCase, TestCase, TransactionTestCase, ignore_warnings,
+    skipUnlessDBFeature,
 )
+from django.utils.encoding import DjangoUnicodeDecodeError
 
 from .models import (
     Author, Book, DefaultPerson, ManualPrimaryKeyTest, Person, Profile,
@@ -204,20 +208,24 @@ class GetOrCreateTestsWithManualPKs(TestCase):
             ManualPrimaryKeyTest.objects.get_or_create(id=1, data="Different")
         except IntegrityError:
             formatted_traceback = traceback.format_exc()
-            self.assertIn('obj.save', formatted_traceback)
+            self.assertIn(str('obj.save'), formatted_traceback)
 
+    # MySQL emits a warning when broken data is saved
+    @ignore_warnings(module='django.db.backends.mysql.base')
     def test_savepoint_rollback(self):
         """
-        The database connection is still usable after a DatabaseError in
-        get_or_create() (#20463).
+        Regression test for #20463: the database connection should still be
+        usable after a DataError or ProgrammingError in .get_or_create().
         """
-        Tag.objects.create(text='foo')
-        with self.assertRaises(DatabaseError):
-            # pk 123456789 doesn't exist, so the tag object will be created.
-            # Saving triggers a unique constraint violation on 'text'.
-            Tag.objects.get_or_create(pk=123456789, defaults={'text': 'foo'})
-        # Tag objects can be created after the error.
-        Tag.objects.create(text='bar')
+        try:
+            Person.objects.get_or_create(
+                birthday=date(1970, 1, 1),
+                defaults={'first_name': b"\xff", 'last_name': b"\xff"})
+        except (DatabaseError, DjangoUnicodeDecodeError):
+            Person.objects.create(
+                first_name="Bob", last_name="Ross", birthday=date(1950, 1, 1))
+        else:
+            self.skipTest("This backend accepts broken utf-8.")
 
     def test_get_or_create_empty(self):
         """
@@ -442,19 +450,6 @@ class UpdateOrCreateTests(TestCase):
         )
         self.assertIs(created, False)
         self.assertEqual(obj.last_name, 'NotHarrison')
-
-
-class UpdateOrCreateTestsWithManualPKs(TestCase):
-
-    def test_create_with_duplicate_primary_key(self):
-        """
-        If an existing primary key is specified with different values for other
-        fields, then IntegrityError is raised and data isn't updated.
-        """
-        ManualPrimaryKeyTest.objects.create(id=1, data='Original')
-        with self.assertRaises(IntegrityError):
-            ManualPrimaryKeyTest.objects.update_or_create(id=1, data='Different')
-        self.assertEqual(ManualPrimaryKeyTest.objects.get(id=1).data, 'Original')
 
 
 class UpdateOrCreateTransactionTests(TransactionTestCase):

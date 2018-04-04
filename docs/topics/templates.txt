@@ -315,6 +315,10 @@ applications. This generic name was kept for backwards-compatibility.
 
       Only set it to ``False`` if you're rendering non-HTML templates!
 
+  .. versionadded:: 1.10
+
+      The ``autoescape`` option was added.
+
 * ``'context_processors'``: a list of dotted Python paths to callables that
   are used to populate the context when a template is rendered with a request.
   These callables take a request object as their argument and return a
@@ -383,7 +387,7 @@ applications. This generic name was kept for backwards-compatibility.
 
 Requires Jinja2_ to be installed:
 
-.. console::
+.. code-block:: console
 
     $ pip install Jinja2
 
@@ -441,6 +445,10 @@ adds defaults that differ from Jinja2's for a few options:
     Unless all of these conditions are met, passing a function to the template is
     simpler and more in line with the design of Jinja2.
 
+.. versionadded:: 1.11
+
+    The ``'context_processors'`` option was added.
+
 The default configuration is purposefully kept to a minimum. If a template is
 rendered with a request (e.g. when using :py:func:`~django.shortcuts.render`),
 the ``Jinja2`` backend adds the globals ``request``, ``csrf_input``, and
@@ -450,6 +458,8 @@ In order to use Django-specific APIs, you must configure them into the
 environment.
 
 For example, you can create ``myproject/jinja2.py`` with this content::
+
+    from __future__ import absolute_import  # Python 2 only
 
     from django.contrib.staticfiles.storage import staticfiles_storage
     from django.urls import reverse
@@ -508,7 +518,7 @@ fictional ``foobar`` template library::
         def __init__(self, params):
             params = params.copy()
             options = params.pop('OPTIONS').copy()
-            super().__init__(params)
+            super(FooBar, self).__init__(params)
 
             self.engine = foobar.Engine(**options)
 
@@ -527,7 +537,7 @@ fictional ``foobar`` template library::
                 raise TemplateSyntaxError(exc.args)
 
 
-    class Template:
+    class Template(object):
 
         def __init__(self, template):
             self.template = template

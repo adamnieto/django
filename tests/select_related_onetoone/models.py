@@ -1,6 +1,8 @@
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class User(models.Model):
     username = models.CharField(max_length=100)
     email = models.EmailField()
@@ -9,6 +11,7 @@ class User(models.Model):
         return self.username
 
 
+@python_2_unicode_compatible
 class UserProfile(models.Model):
     user = models.OneToOneField(User, models.CASCADE)
     city = models.CharField(max_length=100)
@@ -18,6 +21,7 @@ class UserProfile(models.Model):
         return "%s, %s" % (self.city, self.state)
 
 
+@python_2_unicode_compatible
 class UserStatResult(models.Model):
     results = models.CharField(max_length=50)
 
@@ -25,6 +29,7 @@ class UserStatResult(models.Model):
         return 'UserStatResults, results = %s' % (self.results,)
 
 
+@python_2_unicode_compatible
 class UserStat(models.Model):
     user = models.OneToOneField(User, models.CASCADE, primary_key=True)
     posts = models.IntegerField()
@@ -34,6 +39,7 @@ class UserStat(models.Model):
         return 'UserStat, posts = %s' % (self.posts,)
 
 
+@python_2_unicode_compatible
 class StatDetails(models.Model):
     base_stats = models.OneToOneField(UserStat, models.CASCADE)
     comments = models.IntegerField()
@@ -55,6 +61,7 @@ class Product(models.Model):
     image = models.OneToOneField(Image, models.SET_NULL, null=True)
 
 
+@python_2_unicode_compatible
 class Parent1(models.Model):
     name1 = models.CharField(max_length=50)
 
@@ -62,6 +69,7 @@ class Parent1(models.Model):
         return self.name1
 
 
+@python_2_unicode_compatible
 class Parent2(models.Model):
     # Avoid having two "id" fields in the Child1 subclass
     id2 = models.AutoField(primary_key=True)
@@ -71,6 +79,7 @@ class Parent2(models.Model):
         return self.name2
 
 
+@python_2_unicode_compatible
 class Child1(Parent1, Parent2):
     value = models.IntegerField()
 
@@ -78,6 +87,7 @@ class Child1(Parent1, Parent2):
         return self.name1
 
 
+@python_2_unicode_compatible
 class Child2(Parent1):
     parent2 = models.OneToOneField(Parent2, models.CASCADE)
     value = models.IntegerField()

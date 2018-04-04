@@ -1,15 +1,21 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from django.apps.registry import Apps
 from django.db import models
+from django.utils import six
+from django.utils.encoding import python_2_unicode_compatible
 
 
 class CustomModelBase(models.base.ModelBase):
     pass
 
 
-class ModelWithCustomBase(models.Model, metaclass=CustomModelBase):
+class ModelWithCustomBase(six.with_metaclass(CustomModelBase, models.Model)):
     pass
 
 
+@python_2_unicode_compatible
 class UnicodeModel(models.Model):
     title = models.CharField('ÚÑÍ¢ÓÐÉ', max_length=20, default='“Ðjáñgó”')
 
@@ -23,7 +29,7 @@ class UnicodeModel(models.Model):
         return self.title
 
 
-class Unserializable:
+class Unserializable(object):
     """
     An object that migration doesn't know how to serialize.
     """
@@ -56,7 +62,7 @@ class FoodQuerySet(models.query.QuerySet):
 
 class BaseFoodManager(models.Manager):
     def __init__(self, a, b, c=1, d=2):
-        super().__init__()
+        super(BaseFoodManager, self).__init__()
         self.args = (a, b, c, d)
 
 

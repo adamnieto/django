@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.contrib.auth.handlers.modwsgi import (
     check_password, groups_for_user,
 )

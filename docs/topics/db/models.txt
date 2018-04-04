@@ -170,11 +170,10 @@ ones:
         )
 
     The first element in each tuple is the value that will be stored in the
-    database. The second element is displayed by the field's form widget.
-
-    Given a model instance, the display value for a field with ``choices`` can
-    be accessed using the :meth:`~django.db.models.Model.get_FOO_display`
-    method. For example::
+    database. The second element will be displayed by the default form widget
+    or in a :class:`~django.forms.ModelChoiceField`. Given a model instance,
+    the display value for a choices field can be accessed using the
+    ``get_FOO_display()`` method. For example::
 
         from django.db import models
 
@@ -446,14 +445,14 @@ something like this::
     class Person(models.Model):
         name = models.CharField(max_length=128)
 
-        def __str__(self):
+        def __str__(self):              # __unicode__ on Python 2
             return self.name
 
     class Group(models.Model):
         name = models.CharField(max_length=128)
         members = models.ManyToManyField(Person, through='Membership')
 
-        def __str__(self):
+        def __str__(self):              # __unicode__ on Python 2
             return self.name
 
     class Membership(models.Model):
@@ -762,8 +761,8 @@ of :ref:`methods automatically given to each model <model-instance-methods>`.
 You can override most of these -- see `overriding predefined model methods`_,
 below -- but there are a couple that you'll almost always want to define:
 
-:meth:`~Model.__str__`
-    A Python "magic method" that returns a string representation of any
+:meth:`~Model.__str__` (Python 3)
+    A Python "magic method" that returns a unicode "representation" of any
     object. This is what Python and Django will use whenever a model
     instance needs to be coerced and displayed as a plain string. Most
     notably, this happens when you display an object in an interactive
@@ -771,6 +770,9 @@ below -- but there are a couple that you'll almost always want to define:
 
     You'll always want to define this method; the default isn't very helpful
     at all.
+
+``__unicode__()`` (Python 2)
+    Python 2 equivalent of ``__str__()``.
 
 :meth:`~Model.get_absolute_url`
     This tells Django how to calculate the URL for an object. Django uses
@@ -805,7 +807,7 @@ to happen whenever you save an object. For example (see
 
         def save(self, *args, **kwargs):
             do_something()
-            super().save(*args, **kwargs)  # Call the "real" save() method.
+            super(Blog, self).save(*args, **kwargs) # Call the "real" save() method.
             do_something_else()
 
 You can also prevent saving::
@@ -820,10 +822,10 @@ You can also prevent saving::
             if self.name == "Yoko Ono's blog":
                 return # Yoko shall never have her own blog!
             else:
-                super().save(*args, **kwargs)  # Call the "real" save() method.
+                super(Blog, self).save(*args, **kwargs) # Call the "real" save() method.
 
 It's important to remember to call the superclass method -- that's
-that ``super().save(*args, **kwargs)`` business -- to ensure
+that ``super(Blog, self).save(*args, **kwargs)`` business -- to ensure
 that the object still gets saved into the database. If you forget to
 call the superclass method, the default behavior won't happen and the
 database won't get touched.
@@ -897,7 +899,9 @@ information into a number of other models. You write your base class
 and put ``abstract=True`` in the :ref:`Meta <meta-options>`
 class. This model will then not be used to create any database
 table. Instead, when it is used as a base class for other models, its
-fields will be added to those of the child class.
+fields will be added to those of the child class. It is an error to
+have fields in the abstract base class with the same name as those in
+the child (and Django will raise an exception).
 
 An example::
 
@@ -917,9 +921,6 @@ The ``Student`` model will have three fields: ``name``, ``age`` and
 ``home_group``. The ``CommonInfo`` model cannot be used as a normal Django
 model, since it is an abstract base class. It does not generate a database
 table or have a manager, and cannot be instantiated or saved directly.
-
-Fields inherited from abstract base classes can be overridden with another
-field or value, or be removed with ``None``.
 
 For many uses, this type of model inheritance will be exactly what you want.
 It provides a way to factor out common information at the Python level, while
@@ -1032,6 +1033,11 @@ in the above code, if the :attr:`~django.db.models.ForeignKey.related_name`
 attribute was omitted, the reverse name for the ``m2m`` field would be
 ``childa_set`` in the ``ChildA`` case and ``childb_set`` for the ``ChildB``
 field.
+
+.. versionchanged:: 1.10
+
+   Interpolation of  ``'%(app_label)s'`` and ``'%(class)s'`` for
+   ``related_query_name`` was added.
 
 .. _multi-table-inheritance:
 
@@ -1242,6 +1248,11 @@ proxy model can inherit from any number of abstract model classes, providing
 they do *not* define any model fields. A proxy model may also inherit from any
 number of proxy models that share a common non-abstract parent class.
 
+.. versionchanged:: 1.10
+
+    In earlier versions, a proxy model couldn't inherit more than one proxy
+    model that shared the same parent class.
+
 Proxy model managers
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -1379,6 +1390,10 @@ an attribute called ``author`` in any class that inherits from that base class.
 This restriction doesn't apply to model fields inherited from an abstract
 model. Such fields may be overridden with another field or value, or be removed
 by setting ``field_name = None``.
+
+.. versionchanged:: 1.10
+
+    The ability to override abstract fields was added.
 
 .. warning::
 

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from datetime import datetime
 from operator import attrgetter
 
@@ -5,7 +7,7 @@ from django.db.models import DateTimeField, F, Max, OuterRef, Subquery
 from django.db.models.functions import Upper
 from django.test import TestCase
 
-from .models import Article, Author, OrderedByFArticle, Reference
+from .models import Article, Author, Reference
 
 
 class OrderingTests(TestCase):
@@ -228,14 +230,6 @@ class OrderingTests(TestCase):
             attrgetter("headline")
         )
 
-    def test_no_reordering_after_slicing(self):
-        msg = 'Cannot reverse a query once a slice has been taken.'
-        qs = Article.objects.all()[0:2]
-        with self.assertRaisesMessage(TypeError, msg):
-            qs.reverse()
-        with self.assertRaisesMessage(TypeError, msg):
-            qs.last()
-
     def test_extra_ordering(self):
         """
         Ordering can be based on fields included from an 'extra' clause
@@ -393,13 +387,3 @@ class OrderingTests(TestCase):
         r1 = Reference.objects.create(article_id=self.a1.pk)
         r2 = Reference.objects.create(article_id=self.a2.pk)
         self.assertSequenceEqual(Reference.objects.all(), [r2, r1])
-
-    def test_default_ordering_by_f_expression(self):
-        """F expressions can be used in Meta.ordering."""
-        articles = OrderedByFArticle.objects.all()
-        articles.filter(headline='Article 2').update(author=self.author_2)
-        articles.filter(headline='Article 3').update(author=self.author_1)
-        self.assertQuerysetEqual(
-            articles, ['Article 1', 'Article 4', 'Article 3', 'Article 2'],
-            attrgetter('headline')
-        )

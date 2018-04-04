@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import threading
 from datetime import datetime, timedelta
 
@@ -6,11 +8,12 @@ from django.db import DEFAULT_DB_ALIAS, DatabaseError, connections
 from django.db.models.manager import BaseManager
 from django.db.models.query import EmptyQuerySet, QuerySet
 from django.test import (
-    SimpleTestCase, TestCase, TransactionTestCase, skipUnlessDBFeature,
+    SimpleTestCase, TestCase, TransactionTestCase, skipIfDBFeature,
+    skipUnlessDBFeature,
 )
-from django.utils.translation import gettext_lazy
+from django.utils.translation import ugettext_lazy
 
-from .models import Article, ArticleSelectOnSave, FeaturedArticle, SelfRef
+from .models import Article, ArticleSelectOnSave, SelfRef
 
 
 class ModelInstanceCreationTests(TestCase):
@@ -163,13 +166,42 @@ class ModelTest(TestCase):
 
         self.assertNotEqual(Article.objects.get(id__exact=a1.id), Article.objects.get(id__exact=a2.id))
 
+    @skipUnlessDBFeature('supports_microsecond_precision')
     def test_microsecond_precision(self):
+        # In PostgreSQL, microsecond-level precision is available.
         a9 = Article(
             headline='Article 9',
             pub_date=datetime(2005, 7, 31, 12, 30, 45, 180),
         )
         a9.save()
         self.assertEqual(Article.objects.get(pk=a9.pk).pub_date, datetime(2005, 7, 31, 12, 30, 45, 180))
+
+    @skipIfDBFeature('supports_microsecond_precision')
+    def test_microsecond_precision_not_supported(self):
+        # In MySQL, microsecond-level precision isn't always available. You'll
+        # lose microsecond-level precision once the data is saved.
+        a9 = Article(
+            headline='Article 9',
+            pub_date=datetime(2005, 7, 31, 12, 30, 45, 180),
+        )
+        a9.save()
+        self.assertEqual(
+            Article.objects.get(id__exact=a9.id).pub_date,
+            datetime(2005, 7, 31, 12, 30, 45),
+        )
+
+    @skipIfDBFeature('supports_microsecond_precision')
+    def test_microsecond_precision_not_supported_edge_case(self):
+        # In MySQL, microsecond-level precision isn't always available. You'll
+        # lose microsecond-level precision once the data is saved.
+        a = Article.objects.create(
+            headline='Article',
+            pub_date=datetime(2008, 12, 31, 23, 59, 59, 999999),
+        )
+        self.assertEqual(
+            Article.objects.get(pk=a.pk).pub_date,
+            datetime(2008, 12, 31, 23, 59, 59),
+        )
 
     def test_manually_specify_primary_key(self):
         # You can manually specify the primary key when creating a new object.
@@ -280,13 +312,13 @@ class ModelTest(TestCase):
             pub_date__year=2008).extra(select={'dashed-value': '1', 'undashedvalue': '2'})
         self.assertEqual(articles[0].undashedvalue, 2)
 
-    def test_create_relation_with_gettext_lazy(self):
+    def test_create_relation_with_ugettext_lazy(self):
         """
-        gettext_lazy objects work when saving model instances
+        ugettext_lazy objects work when saving model instances
         through various methods. Refs #10498.
         """
         notlazy = 'test'
-        lazy = gettext_lazy(notlazy)
+        lazy = ugettext_lazy(notlazy)
         Article.objects.create(headline=lazy, pub_date=datetime.now())
         article = Article.objects.get()
         self.assertEqual(article.headline, notlazy)
@@ -305,8 +337,8 @@ class ModelTest(TestCase):
         self.assertEqual(article.headline, notlazy)
 
     def test_emptyqs(self):
-        msg = "EmptyQuerySet can't be instantiated"
-        with self.assertRaisesMessage(TypeError, msg):
+        # Can't be instantiated
+        with self.assertRaises(TypeError):
             EmptyQuerySet()
         self.assertIsInstance(Article.objects.none(), EmptyQuerySet)
         self.assertNotIsInstance('', EmptyQuerySet)
@@ -367,8 +399,7 @@ class ModelTest(TestCase):
     def test_hash(self):
         # Value based on PK
         self.assertEqual(hash(Article(id=1)), hash(1))
-        msg = 'Model instances without primary key value are unhashable'
-        with self.assertRaisesMessage(TypeError, msg):
+        with self.assertRaises(TypeError):
             # No PK value -> unhashable (because save() would then change
             # hash)
             hash(Article())
@@ -573,7 +604,7 @@ class ManagerTest(SimpleTestCase):
         `Manager` will need to be added to `ManagerTest.QUERYSET_PROXY_METHODS`.
         """
         self.assertEqual(
-            sorted(BaseManager._get_queryset_methods(QuerySet)),
+            sorted(BaseManager._get_queryset_methods(QuerySet).keys()),
             sorted(self.QUERYSET_PROXY_METHODS),
         )
 
@@ -589,7 +620,7 @@ class SelectOnSaveTests(TestCase):
         with self.assertNumQueries(1):
             asos.save(force_update=True)
         Article.objects.all().delete()
-        with self.assertRaisesMessage(DatabaseError, 'Forced update did not affect any rows.'):
+        with self.assertRaises(DatabaseError):
             with self.assertNumQueries(1):
                 asos.save(force_update=True)
 
@@ -612,7 +643,7 @@ class SelectOnSaveTests(TestCase):
 
             def _update(self, *args, **kwargs):
                 FakeQuerySet.called = True
-                super()._update(*args, **kwargs)
+                super(FakeQuerySet, self)._update(*args, **kwargs)
                 return 0
 
         try:
@@ -624,23 +655,23 @@ class SelectOnSaveTests(TestCase):
             # This is not wanted behavior, but this is how Django has always
             # behaved for databases that do not return correct information
             # about matched rows for UPDATE.
-            with self.assertRaisesMessage(DatabaseError, 'Forced update did not affect any rows.'):
+            with self.assertRaises(DatabaseError):
                 asos.save(force_update=True)
-            msg = (
-                "An error occurred in the current transaction. You can't "
-                "execute queries until the end of the 'atomic' block."
-            )
-            with self.assertRaisesMessage(DatabaseError, msg):
+            with self.assertRaises(DatabaseError):
                 asos.save(update_fields=['pub_date'])
         finally:
             Article._base_manager._queryset_class = orig_class
 
 
 class ModelRefreshTests(TestCase):
+    def _truncate_ms(self, val):
+        # MySQL < 5.6.4 removes microseconds from the datetimes which can cause
+        # problems when comparing the original value to that loaded from DB
+        return val - timedelta(microseconds=val.microsecond)
 
     def test_refresh(self):
-        a = Article.objects.create(pub_date=datetime.now())
-        Article.objects.create(pub_date=datetime.now())
+        a = Article.objects.create(pub_date=self._truncate_ms(datetime.now()))
+        Article.objects.create(pub_date=self._truncate_ms(datetime.now()))
         Article.objects.filter(pk=a.pk).update(headline='new headline')
         with self.assertNumQueries(1):
             a.refresh_from_db()
@@ -659,8 +690,7 @@ class ModelRefreshTests(TestCase):
 
     def test_unknown_kwarg(self):
         s = SelfRef.objects.create()
-        msg = "refresh_from_db() got an unexpected keyword argument 'unknown_kwarg'"
-        with self.assertRaisesMessage(TypeError, msg):
+        with self.assertRaises(TypeError):
             s.refresh_from_db(unknown_kwarg=10)
 
     def test_refresh_fk(self):
@@ -688,7 +718,7 @@ class ModelRefreshTests(TestCase):
         self.assertEqual(s2.selfref, s1)
 
     def test_refresh_unsaved(self):
-        pub_date = datetime.now()
+        pub_date = self._truncate_ms(datetime.now())
         a = Article.objects.create(pub_date=pub_date)
         a2 = Article(id=a.pk)
         with self.assertNumQueries(1):
@@ -708,29 +738,6 @@ class ModelRefreshTests(TestCase):
         self.assertIsNone(s1.article)
 
     def test_refresh_no_fields(self):
-        a = Article.objects.create(pub_date=datetime.now())
+        a = Article.objects.create(pub_date=self._truncate_ms(datetime.now()))
         with self.assertNumQueries(0):
             a.refresh_from_db(fields=[])
-
-    def test_refresh_clears_reverse_related(self):
-        """refresh_from_db() clear cached reverse relations."""
-        article = Article.objects.create(
-            headline='Parrot programs in Python',
-            pub_date=datetime(2005, 7, 28),
-        )
-        self.assertFalse(hasattr(article, 'featured'))
-        FeaturedArticle.objects.create(article_id=article.pk)
-        article.refresh_from_db()
-        self.assertTrue(hasattr(article, 'featured'))
-
-    def test_refresh_clears_one_to_one_field(self):
-        article = Article.objects.create(
-            headline='Parrot programs in Python',
-            pub_date=datetime(2005, 7, 28),
-        )
-        featured = FeaturedArticle.objects.create(article_id=article.pk)
-        self.assertEqual(featured.article.headline, 'Parrot programs in Python')
-        article.headline = 'Parrot programs in Python 2.0'
-        article.save()
-        featured.refresh_from_db()
-        self.assertEqual(featured.article.headline, 'Parrot programs in Python 2.0')

@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import json
 
 from django.core import exceptions, serializers
@@ -42,31 +45,18 @@ class SimpleTests(HStoreTestCase):
         self.assertEqual(reloaded.field, value)
 
     def test_key_val_cast_to_string(self):
-        value = {'a': 1, 'b': 'B', 2: 'c', 'ï': 'ê'}
-        expected_value = {'a': '1', 'b': 'B', '2': 'c', 'ï': 'ê'}
+        value = {'a': 1, 'b': 'B', 2: 'c', 'ï': 'ê', b'x': b'test'}
+        expected_value = {'a': '1', 'b': 'B', '2': 'c', 'ï': 'ê', 'x': 'test'}
 
         instance = HStoreModel.objects.create(field=value)
         instance = HStoreModel.objects.get()
-        self.assertEqual(instance.field, expected_value)
+        self.assertDictEqual(instance.field, expected_value)
 
         instance = HStoreModel.objects.get(field__a=1)
-        self.assertEqual(instance.field, expected_value)
+        self.assertDictEqual(instance.field, expected_value)
 
         instance = HStoreModel.objects.get(field__has_keys=[2, 'a', 'ï'])
-        self.assertEqual(instance.field, expected_value)
-
-    def test_array_field(self):
-        value = [
-            {'a': 1, 'b': 'B', 2: 'c', 'ï': 'ê'},
-            {'a': 1, 'b': 'B', 2: 'c', 'ï': 'ê'},
-        ]
-        expected_value = [
-            {'a': '1', 'b': 'B', '2': 'c', 'ï': 'ê'},
-            {'a': '1', 'b': 'B', '2': 'c', 'ï': 'ê'},
-        ]
-        instance = HStoreModel.objects.create(array_field=value)
-        instance.refresh_from_db()
-        self.assertEqual(instance.array_field, expected_value)
+        self.assertDictEqual(instance.field, expected_value)
 
 
 class TestQuerying(HStoreTestCase):
@@ -148,18 +138,6 @@ class TestQuerying(HStoreTestCase):
             self.objs[:2]
         )
 
-    def test_order_by_field(self):
-        more_objs = (
-            HStoreModel.objects.create(field={'g': '637'}),
-            HStoreModel.objects.create(field={'g': '002'}),
-            HStoreModel.objects.create(field={'g': '042'}),
-            HStoreModel.objects.create(field={'g': '981'}),
-        )
-        self.assertSequenceEqual(
-            HStoreModel.objects.filter(field__has_key='g').order_by('field__g'),
-            [more_objs[1], more_objs[2], more_objs[0], more_objs[3]]
-        )
-
     def test_keys_contains(self):
         self.assertSequenceEqual(
             HStoreModel.objects.filter(field__keys__contains=['a']),
@@ -191,27 +169,17 @@ class TestQuerying(HStoreTestCase):
 
 
 class TestSerialization(HStoreTestCase):
-    test_data = json.dumps([{
-        'model': 'postgres_tests.hstoremodel',
-        'pk': None,
-        'fields': {
-            'field': json.dumps({'a': 'b'}),
-            'array_field': json.dumps([
-                json.dumps({'a': 'b'}),
-                json.dumps({'b': 'a'}),
-            ]),
-        },
-    }])
+    test_data = ('[{"fields": {"field": "{\\"a\\": \\"b\\"}"}, '
+                 '"model": "postgres_tests.hstoremodel", "pk": null}]')
 
     def test_dumping(self):
-        instance = HStoreModel(field={'a': 'b'}, array_field=[{'a': 'b'}, {'b': 'a'}])
+        instance = HStoreModel(field={'a': 'b'})
         data = serializers.serialize('json', [instance])
         self.assertEqual(json.loads(data), json.loads(self.test_data))
 
     def test_loading(self):
         instance = list(serializers.deserialize('json', self.test_data))[0].object
         self.assertEqual(instance.field, {'a': 'b'})
-        self.assertEqual(instance.array_field, [{'a': 'b'}, {'b': 'a'}])
 
     def test_roundtrip_with_null(self):
         instance = HStoreModel(field={'a': 'b', 'c': None})

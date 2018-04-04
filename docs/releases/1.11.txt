@@ -330,16 +330,16 @@ Models
   (This validator moved to the form field in :doc:`Django 1.11.2 <1.11.2>`.)
 
 * Added support for time truncation to
-  :class:`~django.db.models.functions.Trunc` functions.
+  :class:`~django.db.models.functions.datetime.Trunc` functions.
 
-* Added the :class:`~django.db.models.functions.ExtractWeek` function to
-  extract the week from :class:`~django.db.models.DateField` and
+* Added the :class:`~django.db.models.functions.datetime.ExtractWeek` function
+  to extract the week from :class:`~django.db.models.DateField` and
   :class:`~django.db.models.DateTimeField` and exposed it through the
   :lookup:`week` lookup.
 
-* Added the :class:`~django.db.models.functions.TruncTime` function to truncate
-  :class:`~django.db.models.DateTimeField` to its time component and exposed it
-  through the :lookup:`time` lookup.
+* Added the :class:`~django.db.models.functions.datetime.TruncTime` function
+  to truncate :class:`~django.db.models.DateTimeField` to its time component
+  and exposed it through the :lookup:`time` lookup.
 
 * Added support for expressions in :meth:`.QuerySet.values` and
   :meth:`~.QuerySet.values_list`.
@@ -489,9 +489,6 @@ Backwards incompatible changes in 1.11
 
 Database backend API
 --------------------
-
-This section describes changes that may be needed in third-party database
-backends.
 
 * The ``DatabaseOperations.time_trunc_sql()`` method is added to support
   ``TimeField`` truncation. It accepts a ``lookup_type`` and ``field_name``
@@ -698,9 +695,8 @@ Miscellaneous
   1.0) is removed.
 
 * The :class:`cached template loader <django.template.loaders.cached.Loader>`
-  is now enabled if :setting:`OPTIONS['loaders'] <TEMPLATES-OPTIONS>` isn't
-  specified and :setting:`OPTIONS['debug'] <TEMPLATES-OPTIONS>` is ``False``
-  (the latter option defaults to the value of :setting:`DEBUG`). This could
+  is now enabled if :setting:`DEBUG` is ``False`` and
+  :setting:`OPTIONS['loaders'] <TEMPLATES-OPTIONS>` isn't specified. This could
   be backwards-incompatible if you have some :ref:`template tags that aren't
   thread safe <template_tag_thread_safety>`.
 

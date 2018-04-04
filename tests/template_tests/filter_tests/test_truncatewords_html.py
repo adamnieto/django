@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from django.template.defaultfilters import truncatewords_html
 from django.test import SimpleTestCase
 
@@ -39,6 +42,3 @@ class FunctionTests(SimpleTestCase):
             truncatewords_html('<i>Buenos d&iacute;as! &#x00bf;C&oacute;mo est&aacute;?</i>', 3),
             '<i>Buenos d&iacute;as! &#x00bf;C&oacute;mo ...</i>',
         )
-
-    def test_invalid_arg(self):
-        self.assertEqual(truncatewords_html('<p>string</p>', 'a'), '<p>string</p>')

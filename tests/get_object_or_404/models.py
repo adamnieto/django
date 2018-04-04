@@ -11,8 +11,10 @@ performing a ``filter()`` lookup and raising a ``Http404`` exception if a
 """
 
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class Author(models.Model):
     name = models.CharField(max_length=50)
 
@@ -22,20 +24,15 @@ class Author(models.Model):
 
 class ArticleManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(authors__name__icontains='sir')
+        return super(ArticleManager, self).get_queryset().filter(authors__name__icontains='sir')
 
 
-class AttributeErrorManager(models.Manager):
-    def get_queryset(self):
-        raise AttributeError('AttributeErrorManager')
-
-
+@python_2_unicode_compatible
 class Article(models.Model):
     authors = models.ManyToManyField(Author)
     title = models.CharField(max_length=50)
     objects = models.Manager()
     by_a_sir = ArticleManager()
-    attribute_error_objects = AttributeErrorManager()
 
     def __str__(self):
         return self.title

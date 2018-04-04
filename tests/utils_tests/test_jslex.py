@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
 """Tests for jslex."""
 # originally from https://bitbucket.org/ned/jslex
+from __future__ import unicode_literals
 
 from django.test import SimpleTestCase
 from django.utils.jslex import JsLexer, prepare_js_for_gettext
@@ -118,7 +120,7 @@ def make_function(input, toks):
     def test_func(self):
         lexer = JsLexer()
         result = ["%s %s" % (name, tok) for name, tok in lexer.lex(input) if name != 'ws']
-        self.assertEqual(result, toks)
+        self.assertListEqual(result, toks)
     return test_func
 
 
@@ -220,7 +222,7 @@ class JsToCForGettextTest(SimpleTestCase):
 
 def make_function(js, c):
     def test_func(self):
-        self.assertEqual(prepare_js_for_gettext(js), c)
+        self.assertMultiLineEqual(prepare_js_for_gettext(js), c)
     return test_func
 
 

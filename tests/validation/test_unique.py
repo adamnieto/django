@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import datetime
 import unittest
 
@@ -28,7 +30,7 @@ class GetUniqueCheckTests(unittest.TestCase):
         self.assertEqual(
             ([(UniqueTogetherModel, ('ifield', 'cfield')),
               (UniqueTogetherModel, ('ifield', 'efield')),
-              (UniqueTogetherModel, ('id',))],
+              (UniqueTogetherModel, ('id',)), ],
              []),
             m._get_unique_checks()
         )
@@ -47,13 +49,13 @@ class GetUniqueCheckTests(unittest.TestCase):
                     (('foo', 'bar'), ('bar', 'baz'))),
         }
 
-        for unique_together, normalized in data.values():
+        for test_name, (unique_together, normalized) in data.items():
             class M(models.Model):
                 foo = models.IntegerField()
                 bar = models.IntegerField()
                 baz = models.IntegerField()
 
-                Meta = type('Meta', (), {
+                Meta = type(str('Meta'), (), {
                     'unique_together': unique_together,
                     'apps': Apps()
                 })

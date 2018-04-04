@@ -5,6 +5,7 @@ from django.forms.renderers import (
     BaseRenderer, DjangoTemplates, Jinja2, TemplatesSetting,
 )
 from django.test import SimpleTestCase
+from django.utils._os import upath
 
 try:
     import jinja2
@@ -12,7 +13,7 @@ except ImportError:
     jinja2 = None
 
 
-class SharedTests:
+class SharedTests(object):
     expected_widget_dir = 'templates'
 
     def test_installed_apps_template_found(self):
@@ -22,12 +23,12 @@ class SharedTests:
         tpl = renderer.get_template('forms_tests/custom_widget.html')
         expected_path = os.path.abspath(
             os.path.join(
-                os.path.dirname(__file__),
+                upath(os.path.dirname(__file__)),
                 '..',
                 self.expected_widget_dir + '/forms_tests/custom_widget.html',
             )
         )
-        self.assertEqual(tpl.origin.name, expected_path)
+        self.assertEqual(upath(tpl.origin.name), expected_path)
 
 
 class BaseTemplateRendererTests(SimpleTestCase):

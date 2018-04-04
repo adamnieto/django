@@ -1,23 +1,31 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import os
 import unittest
 from copy import copy
 from decimal import Decimal
 
 from django.conf import settings
-from django.contrib.gis.gdal import DataSource
-from django.contrib.gis.utils.layermapping import (
-    InvalidDecimal, InvalidString, LayerMapError, LayerMapping,
-    MissingForeignKey,
-)
+from django.contrib.gis.geos import HAS_GEOS
 from django.db import connection
 from django.test import TestCase, override_settings
+from django.utils._os import upath
 
-from .models import (
-    City, County, CountyFeat, ICity1, ICity2, Interstate, Invalid, State,
-    city_mapping, co_mapping, cofeat_mapping, inter_mapping,
-)
+if HAS_GEOS:
+    from django.contrib.gis.utils.layermapping import (
+        LayerMapping, LayerMapError, InvalidDecimal, InvalidString,
+        MissingForeignKey,
+    )
+    from django.contrib.gis.gdal import DataSource
 
-shp_path = os.path.realpath(os.path.join(os.path.dirname(__file__), os.pardir, 'data'))
+    from .models import (
+        City, County, CountyFeat, Interstate, ICity1, ICity2, Invalid, State,
+        city_mapping, co_mapping, cofeat_mapping, inter_mapping,
+    )
+
+
+shp_path = os.path.realpath(os.path.join(os.path.dirname(upath(__file__)), os.pardir, 'data'))
 city_shp = os.path.join(shp_path, 'cities', 'cities.shp')
 co_shp = os.path.join(shp_path, 'counties', 'counties.shp')
 inter_shp = os.path.join(shp_path, 'interstates', 'interstates.shp')
@@ -311,7 +319,7 @@ class LayerMapTest(TestCase):
         self.assertEqual(City.objects.all()[0].name, "Zürich")
 
 
-class OtherRouter:
+class OtherRouter(object):
     def db_for_read(self, model, **hints):
         return 'other'
 
@@ -327,7 +335,6 @@ class OtherRouter:
 
 @override_settings(DATABASE_ROUTERS=[OtherRouter()])
 class LayerMapRouterTest(TestCase):
-    multi_db = True
 
     @unittest.skipUnless(len(settings.DATABASES) > 1, 'multiple databases required')
     def test_layermapping_default_db(self):

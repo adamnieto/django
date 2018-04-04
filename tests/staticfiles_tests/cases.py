@@ -1,3 +1,6 @@
+# -*- encoding: utf-8 -*-
+from __future__ import unicode_literals
+
 import codecs
 import os
 import shutil
@@ -7,11 +10,13 @@ from django.conf import settings
 from django.core.management import call_command
 from django.template import Context, Template
 from django.test import SimpleTestCase, override_settings
+from django.utils import six
+from django.utils.encoding import force_text
 
 from .settings import TEST_SETTINGS
 
 
-class BaseStaticFilesMixin:
+class BaseStaticFilesMixin(object):
     """
     Test case with a couple utility assertions.
     """
@@ -19,7 +24,7 @@ class BaseStaticFilesMixin:
     def assertFileContains(self, filepath, text):
         self.assertIn(
             text,
-            self._get_file(filepath),
+            self._get_file(force_text(filepath)),
             "'%s' not in '%s'" % (text, filepath),
         )
 
@@ -28,14 +33,14 @@ class BaseStaticFilesMixin:
             self._get_file(filepath)
 
     def render_template(self, template, **kwargs):
-        if isinstance(template, str):
+        if isinstance(template, six.string_types):
             template = Template(template)
         return template.render(Context(**kwargs)).strip()
 
     def static_template_snippet(self, path, asvar=False):
         if asvar:
-            return "{%% load static from static %%}{%% static '%s' as var %%}{{ var }}" % path
-        return "{%% load static from static %%}{%% static '%s' %%}" % path
+            return "{%% load static from staticfiles %%}{%% static '%s' as var %%}{{ var }}" % path
+        return "{%% load static from staticfiles %%}{%% static '%s' %%}" % path
 
     def assertStaticRenders(self, path, result, asvar=False, **kwargs):
         template = self.static_template_snippet(path, asvar)
@@ -62,7 +67,7 @@ class CollectionTestCase(BaseStaticFilesMixin, SimpleTestCase):
     all these tests.
     """
     def setUp(self):
-        super().setUp()
+        super(CollectionTestCase, self).setUp()
         temp_dir = tempfile.mkdtemp()
         # Override the STATIC_ROOT for all tests from setUp to tearDown
         # rather than as a context manager
@@ -70,13 +75,14 @@ class CollectionTestCase(BaseStaticFilesMixin, SimpleTestCase):
         self.patched_settings.enable()
         self.run_collectstatic()
         # Same comment as in runtests.teardown.
-        self.addCleanup(shutil.rmtree, temp_dir)
+        self.addCleanup(shutil.rmtree, six.text_type(temp_dir))
 
     def tearDown(self):
         self.patched_settings.disable()
-        super().tearDown()
+        super(CollectionTestCase, self).tearDown()
 
-    def run_collectstatic(self, *, verbosity=0, **kwargs):
+    def run_collectstatic(self, **kwargs):
+        verbosity = kwargs.pop('verbosity', 0)
         call_command('collectstatic', interactive=False, verbosity=verbosity,
                      ignore_patterns=['*.ignoreme'], **kwargs)
 
@@ -87,7 +93,7 @@ class CollectionTestCase(BaseStaticFilesMixin, SimpleTestCase):
             return f.read()
 
 
-class TestDefaults:
+class TestDefaults(object):
     """
     A few standard test cases.
     """
@@ -128,6 +134,3 @@ class TestDefaults:
         Can find a file with capital letters.
         """
         self.assertFileContains('test/camelCase.txt', 'camelCase')
-
-    def test_filename_with_percent_sign(self):
-        self.assertFileContains('test/%2F.txt', '%2F content')

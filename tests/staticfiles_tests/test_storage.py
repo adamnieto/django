@@ -1,9 +1,10 @@
+from __future__ import unicode_literals
+
 import os
 import shutil
 import sys
 import tempfile
 import unittest
-from io import StringIO
 
 from django.conf import settings
 from django.contrib.staticfiles import finders, storage
@@ -13,6 +14,8 @@ from django.contrib.staticfiles.management.commands.collectstatic import (
 from django.core.cache.backends.base import BaseCache
 from django.core.management import call_command
 from django.test import override_settings
+from django.utils import six
+from django.utils.encoding import force_text
 
 from .cases import CollectionTestCase
 from .settings import TEST_ROOT
@@ -23,12 +26,12 @@ def hashed_file_path(test, path):
     return fullpath.replace(settings.STATIC_URL, '')
 
 
-class TestHashedFiles:
+class TestHashedFiles(object):
     hashed_file_path = hashed_file_path
 
     def setUp(self):
         self._max_post_process_passes = storage.staticfiles_storage.max_post_process_passes
-        super().setUp()
+        super(TestHashedFiles, self).setUp()
 
     def tearDown(self):
         # Clear hashed files to avoid side effects among tests.
@@ -96,10 +99,10 @@ class TestHashedFiles:
 
     def test_path_with_querystring_and_fragment(self):
         relpath = self.hashed_file_path("cached/css/fragments.css")
-        self.assertEqual(relpath, "cached/css/fragments.a60c0e74834f.css")
+        self.assertEqual(relpath, "cached/css/fragments.c4e6753b52d3.css")
         with storage.staticfiles_storage.open(relpath) as relfile:
             content = relfile.read()
-            self.assertIn(b'fonts/font.b9b105392eb8.eot?#iefix', content)
+            self.assertIn(b'fonts/font.a4b0478549d0.eot?#iefix', content)
             self.assertIn(b'fonts/font.b8d603e42714.svg#webfontIyfZbseF', content)
             self.assertIn(b'fonts/font.b8d603e42714.svg#path/to/../../fonts/font.svg', content)
             self.assertIn(b'data:font/woff;charset=utf-8;base64,d09GRgABAAAAADJoAA0AAAAAR2QAAQAAAAAAAAAAAAA', content)
@@ -172,7 +175,7 @@ class TestHashedFiles:
     )
     def test_import_loop(self):
         finders.get_finder.cache_clear()
-        err = StringIO()
+        err = six.StringIO()
         with self.assertRaisesMessage(RuntimeError, 'Max post-process passes exceeded'):
             call_command('collectstatic', interactive=False, verbosity=0, stderr=err)
         self.assertEqual("Post-processing 'All' failed!\n\n", err.getvalue())
@@ -225,7 +228,7 @@ class TestHashedFiles:
         post_processing indicates the origin of the error when it fails.
         """
         finders.get_finder.cache_clear()
-        err = StringIO()
+        err = six.StringIO()
         with self.assertRaises(Exception):
             call_command('collectstatic', interactive=False, verbosity=0, stderr=err)
         self.assertEqual("Post-processing 'faulty.css' failed!\n\n", err.getvalue())
@@ -306,7 +309,7 @@ class TestExtraPatternsCachedStorage(CollectionTestCase):
 
     def setUp(self):
         storage.staticfiles_storage.hashed_files.clear()  # avoid cache interference
-        super().setUp()
+        super(TestExtraPatternsCachedStorage, self).setUp()
 
     def cached_file_path(self, path):
         fullpath = self.render_template(self.static_template_snippet(path))
@@ -339,7 +342,7 @@ class TestCollectionManifestStorage(TestHashedFiles, CollectionTestCase):
     Tests for the Cache busting storage
     """
     def setUp(self):
-        super().setUp()
+        super(TestCollectionManifestStorage, self).setUp()
 
         temp_dir = tempfile.mkdtemp()
         os.makedirs(os.path.join(temp_dir, 'test'))
@@ -348,10 +351,9 @@ class TestCollectionManifestStorage(TestHashedFiles, CollectionTestCase):
             f.write('to be deleted in one test')
 
         self.patched_settings = self.settings(
-            STATICFILES_DIRS=settings.STATICFILES_DIRS + [temp_dir],
-        )
+            STATICFILES_DIRS=settings.STATICFILES_DIRS + [temp_dir])
         self.patched_settings.enable()
-        self.addCleanup(shutil.rmtree, temp_dir)
+        self.addCleanup(shutil.rmtree, six.text_type(temp_dir))
         self._manifest_strict = storage.staticfiles_storage.manifest_strict
 
     def tearDown(self):
@@ -361,7 +363,7 @@ class TestCollectionManifestStorage(TestHashedFiles, CollectionTestCase):
             os.unlink(self._clear_filename)
 
         storage.staticfiles_storage.manifest_strict = self._manifest_strict
-        super().tearDown()
+        super(TestCollectionManifestStorage, self).tearDown()
 
     def assertPostCondition(self):
         hashed_files = storage.staticfiles_storage.hashed_files
@@ -381,7 +383,7 @@ class TestCollectionManifestStorage(TestHashedFiles, CollectionTestCase):
         manifest_content = storage.staticfiles_storage.read_manifest()
         self.assertIn(
             '"version": "%s"' % storage.staticfiles_storage.manifest_version,
-            manifest_content
+            force_text(manifest_content)
         )
 
     def test_parse_cache(self):
@@ -430,7 +432,7 @@ class TestCollectionManifestStorage(TestHashedFiles, CollectionTestCase):
         with self.assertRaisesMessage(ValueError, err_msg):
             self.hashed_file_path(missing_file_name)
 
-        content = StringIO()
+        content = six.StringIO()
         content.write('Found')
         configured_storage.save(missing_file_name, content)
         # File exists on disk
@@ -448,7 +450,7 @@ class TestCollectionSimpleCachedStorage(CollectionTestCase):
 
     def setUp(self):
         storage.staticfiles_storage.hashed_files.clear()  # avoid cache interference
-        super().setUp()
+        super(TestCollectionSimpleCachedStorage, self).setUp()
 
     def test_template_tag_return(self):
         """
@@ -476,7 +478,7 @@ class CustomStaticFilesStorage(storage.StaticFilesStorage):
     def __init__(self, *args, **kwargs):
         kwargs['file_permissions_mode'] = 0o640
         kwargs['directory_permissions_mode'] = 0o740
-        super().__init__(*args, **kwargs)
+        super(CustomStaticFilesStorage, self).__init__(*args, **kwargs)
 
 
 @unittest.skipIf(sys.platform.startswith('win'), "Windows only partially supports chmod.")
@@ -491,11 +493,11 @@ class TestStaticFilePermissions(CollectionTestCase):
     def setUp(self):
         self.umask = 0o027
         self.old_umask = os.umask(self.umask)
-        super().setUp()
+        super(TestStaticFilePermissions, self).setUp()
 
     def tearDown(self):
         os.umask(self.old_umask)
-        super().tearDown()
+        super(TestStaticFilePermissions, self).tearDown()
 
     # Don't run collectstatic command in this test class.
     def run_collectstatic(self, **kwargs):
@@ -553,7 +555,7 @@ class TestCollectionHashedFilesCache(CollectionTestCase):
     hashed_file_path = hashed_file_path
 
     def setUp(self):
-        super().setUp()
+        super(TestCollectionHashedFilesCache, self).setUp()
         self._temp_dir = temp_dir = tempfile.mkdtemp()
         os.makedirs(os.path.join(temp_dir, 'test'))
         self.addCleanup(shutil.rmtree, temp_dir)
@@ -574,7 +576,7 @@ class TestCollectionHashedFilesCache(CollectionTestCase):
 
         with self.modify_settings(STATICFILES_DIRS={'append': self._temp_dir}):
             finders.get_finder.cache_clear()
-            err = StringIO()
+            err = six.StringIO()
             # First collectstatic run.
             call_command('collectstatic', interactive=False, verbosity=0, stderr=err)
             relpath = self.hashed_file_path('test/bar.css')

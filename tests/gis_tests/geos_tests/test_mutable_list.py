@@ -7,6 +7,7 @@
 import unittest
 
 from django.contrib.gis.geos.mutable_list import ListMixin
+from django.utils import six
 
 
 class UserListA(ListMixin):
@@ -14,7 +15,7 @@ class UserListA(ListMixin):
 
     def __init__(self, i_list, *args, **kwargs):
         self._list = self._mytype(i_list)
-        super().__init__(*args, **kwargs)
+        super(UserListA, self).__init__(*args, **kwargs)
 
     def __len__(self):
         return len(self._list)
@@ -297,7 +298,7 @@ class ListMixinTest(unittest.TestCase):
     def test07_allowed_types(self):
         'Type-restricted list'
         pl, ul = self.lists_of_len()
-        ul._allowed = int
+        ul._allowed = six.integer_types
         ul[1] = 50
         ul[:2] = [60, 70, 80]
 
@@ -418,6 +419,13 @@ class ListMixinTest(unittest.TestCase):
         self.assertGreaterEqual(ul + [5], pl, 'cmp')
         self.assertLess(ul, pl + [2], 'cmp')
         self.assertLessEqual(ul, pl + [2], 'cmp')
+
+        # Also works with a custom IndexError
+        ul_longer = ul + [2]
+        ul_longer._IndexError = TypeError
+        ul._IndexError = TypeError
+        self.assertNotEqual(ul_longer, pl)
+        self.assertGreater(ul_longer, ul)
 
         pl[1] = 20
         self.assertGreater(pl, ul, 'cmp for gt self')

@@ -56,12 +56,6 @@ The ``File`` class
         was originally opened with; ``None`` means to reopen with the original
         mode.
 
-        It can be used as a context manager, e.g. ``with file.open() as f:``.
-
-        .. versionchanged:: 2.0
-
-            Context manager support was added.
-
     .. method:: __iter__()
 
         Iterate over the file yielding one line at a time.
@@ -86,9 +80,14 @@ The ``File`` class
     In addition to the listed methods, :class:`~django.core.files.File` exposes
     the following attributes and methods of its ``file`` object:
     ``encoding``, ``fileno``, ``flush``, ``isatty``, ``newlines``, ``read``,
-    ``readinto``, ``readline``, ``readlines``, ``seek``, ``tell``,
-    ``truncate``, ``write``, ``writelines``, ``readable()``, ``writable()``,
-    and ``seekable()``.
+    ``readinto``, ``readline``, ``readlines``, ``seek``, ``softspace``,
+    ``tell``, ``truncate``, ``write``, ``writelines``, ``xreadlines``,
+    ``readable()``, ``writable()``, and ``seekable()``.
+
+    .. versionchanged:: 1.11
+
+        The ``readable()`` and ``writable()`` methods were added and the
+        ``seekable()`` method was made available on Python 2.
 
 .. currentmodule:: django.core.files.base
 
@@ -101,6 +100,7 @@ The ``ContentFile`` class
     but unlike :class:`~django.core.files.File` it operates on string content
     (bytes also supported), rather than an actual file. For example::
 
+        from __future__ import unicode_literals
         from django.core.files.base import ContentFile
 
         f1 = ContentFile("esta sentencia está en español")

@@ -1,6 +1,5 @@
-from unittest import mock
-
 from django.core.management import call_command
+from django.test import mock
 
 from .base import SitemapTestsBase
 

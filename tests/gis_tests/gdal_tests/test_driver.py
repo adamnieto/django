@@ -1,7 +1,7 @@
 import unittest
-from unittest import mock
 
 from django.contrib.gis.gdal import Driver, GDALException
+from django.test import mock
 
 valid_drivers = (
     # vector

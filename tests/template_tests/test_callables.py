@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from unittest import TestCase
 
 from django.template import Context, Engine
@@ -8,11 +10,11 @@ class CallableVariablesTests(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.engine = Engine()
-        super().setUpClass()
+        super(CallableVariablesTests, cls).setUpClass()
 
     def test_callable(self):
 
-        class Doodad:
+        class Doodad(object):
             def __init__(self, value):
                 self.num_calls = 0
                 self.value = value
@@ -41,7 +43,7 @@ class CallableVariablesTests(TestCase):
 
     def test_alters_data(self):
 
-        class Doodad:
+        class Doodad(object):
             alters_data = True
 
             def __init__(self, value):
@@ -68,7 +70,7 @@ class CallableVariablesTests(TestCase):
 
     def test_do_not_call(self):
 
-        class Doodad:
+        class Doodad(object):
             do_not_call_in_templates = True
 
             def __init__(self, value):
@@ -100,7 +102,7 @@ class CallableVariablesTests(TestCase):
         # ``alters_data`` attribute will not make any difference in the
         # template system's behavior.
 
-        class Doodad:
+        class Doodad(object):
             do_not_call_in_templates = True
             alters_data = True
 

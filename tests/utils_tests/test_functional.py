@@ -1,5 +1,9 @@
+# -*- encoding: utf-8 -*-
+from __future__ import unicode_literals
+
 import unittest
 
+from django.utils import six
 from django.utils.functional import cached_property, lazy
 
 
@@ -11,7 +15,7 @@ class FunctionalTestCase(unittest.TestCase):
 
     def test_lazy_base_class(self):
         """lazy also finds base class methods in the proxy object"""
-        class Base:
+        class Base(object):
             def base_method(self):
                 pass
 
@@ -23,7 +27,7 @@ class FunctionalTestCase(unittest.TestCase):
 
     def test_lazy_base_class_override(self):
         """lazy finds the correct (overridden) method implementation"""
-        class Base:
+        class Base(object):
             def method(self):
                 return 'Base'
 
@@ -36,22 +40,29 @@ class FunctionalTestCase(unittest.TestCase):
 
     def test_lazy_object_to_string(self):
 
-        class Klazz:
-            def __str__(self):
-                return "Î am ā Ǩlâzz."
+        class Klazz(object):
+            if six.PY3:
+                def __str__(self):
+                    return "Î am ā Ǩlâzz."
 
-            def __bytes__(self):
-                return b"\xc3\x8e am \xc4\x81 binary \xc7\xa8l\xc3\xa2zz."
+                def __bytes__(self):
+                    return b"\xc3\x8e am \xc4\x81 binary \xc7\xa8l\xc3\xa2zz."
+            else:
+                def __unicode__(self):
+                    return "Î am ā Ǩlâzz."
+
+                def __str__(self):
+                    return b"\xc3\x8e am \xc4\x81 binary \xc7\xa8l\xc3\xa2zz."
 
         t = lazy(lambda: Klazz(), Klazz)()
-        self.assertEqual(str(t), "Î am ā Ǩlâzz.")
-        self.assertEqual(bytes(t), b"\xc3\x8e am \xc4\x81 binary \xc7\xa8l\xc3\xa2zz.")
+        self.assertEqual(six.text_type(t), "Î am ā Ǩlâzz.")
+        self.assertEqual(six.binary_type(t), b"\xc3\x8e am \xc4\x81 binary \xc7\xa8l\xc3\xa2zz.")
 
     def test_cached_property(self):
         """
         cached_property caches its value and that it behaves like a property
         """
-        class A:
+        class A(object):
 
             @cached_property
             def value(self):
@@ -98,7 +109,7 @@ class FunctionalTestCase(unittest.TestCase):
 
     def test_lazy_repr_text(self):
         original_object = 'Lazy translation text'
-        lazy_obj = lazy(lambda: original_object, str)
+        lazy_obj = lazy(lambda: original_object, six.text_type)
         self.assertEqual(repr(original_object), repr(lazy_obj()))
 
     def test_lazy_repr_int(self):

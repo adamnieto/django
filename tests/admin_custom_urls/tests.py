@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.contrib.admin.utils import quote
 from django.contrib.auth.models import User
 from django.template.response import TemplateResponse

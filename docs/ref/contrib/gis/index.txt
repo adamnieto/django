@@ -22,6 +22,7 @@ of spatially enabled data.
     measure
     geos
     gdal
+    geoip
     geoip2
     utils
     commands

@@ -1,3 +1,4 @@
+# coding: utf-8
 from django.template import RequestContext, TemplateSyntaxError
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.urls import NoReverseMatch, resolve

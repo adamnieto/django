@@ -1,3 +1,6 @@
+# -*- encoding: utf-8 -*-
+from __future__ import unicode_literals
+
 from datetime import datetime
 
 from django.contrib.gis.db.models import Extent
@@ -13,7 +16,7 @@ class GeoRegressionTests(TestCase):
     fixtures = ['initial']
 
     def test_update(self):
-        "Testing QuerySet.update() (#10411)."
+        "Testing GeoQuerySet.update(). See #10411."
         pnt = City.objects.get(name='Pueblo').point
         bak = pnt.clone()
         pnt.y += 0.005

@@ -9,10 +9,13 @@ There are two reasons you might want to customize a ``Manager``: to add extra
 returns.
 """
 
+from __future__ import unicode_literals
+
 from django.contrib.contenttypes.fields import (
     GenericForeignKey, GenericRelation,
 )
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
 class PersonManager(models.Manager):
@@ -22,19 +25,12 @@ class PersonManager(models.Manager):
 
 class PublishedBookManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(is_published=True)
-
-
-class AnnotatedBookManager(models.Manager):
-    def get_queryset(self):
-        return super().get_queryset().annotate(
-            favorite_avg=models.Avg('favorite_books__favorite_thing_id')
-        )
+        return super(PublishedBookManager, self).get_queryset().filter(is_published=True)
 
 
 class CustomQuerySet(models.QuerySet):
     def filter(self, *args, **kwargs):
-        queryset = super().filter(fun=True)
+        queryset = super(CustomQuerySet, self).filter(fun=True)
         queryset._filter_CustomQuerySet = True
         return queryset
 
@@ -55,11 +51,11 @@ class CustomQuerySet(models.QuerySet):
 
 class BaseCustomManager(models.Manager):
     def __init__(self, arg):
-        super().__init__()
+        super(BaseCustomManager, self).__init__()
         self.init_arg = arg
 
     def filter(self, *args, **kwargs):
-        queryset = super().filter(fun=True)
+        queryset = super(BaseCustomManager, self).filter(fun=True)
         queryset._filter_CustomManager = True
         return queryset
 
@@ -73,25 +69,26 @@ CustomManager = BaseCustomManager.from_queryset(CustomQuerySet)
 class CustomInitQuerySet(models.QuerySet):
     # QuerySet with an __init__() method that takes an additional argument.
     def __init__(self, custom_optional_arg=None, model=None, query=None, using=None, hints=None):
-        super().__init__(model=model, query=query, using=using, hints=hints)
+        super(CustomInitQuerySet, self).__init__(model=model, query=query, using=using, hints=hints)
 
 
 class DeconstructibleCustomManager(BaseCustomManager.from_queryset(CustomQuerySet)):
 
     def __init__(self, a, b, c=1, d=2):
-        super().__init__(a)
+        super(DeconstructibleCustomManager, self).__init__(a)
 
 
 class FunPeopleManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(fun=True)
+        return super(FunPeopleManager, self).get_queryset().filter(fun=True)
 
 
 class BoringPeopleManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(fun=False)
+        return super(BoringPeopleManager, self).get_queryset().filter(fun=False)
 
 
+@python_2_unicode_compatible
 class Person(models.Model):
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
@@ -114,6 +111,7 @@ class Person(models.Model):
         return "%s %s" % (self.first_name, self.last_name)
 
 
+@python_2_unicode_compatible
 class FunPerson(models.Model):
     first_name = models.CharField(max_length=30)
     last_name = models.CharField(max_length=30)
@@ -134,10 +132,12 @@ class FunPerson(models.Model):
         return "%s %s" % (self.first_name, self.last_name)
 
 
+@python_2_unicode_compatible
 class Book(models.Model):
     title = models.CharField(max_length=50)
     author = models.CharField(max_length=30)
     is_published = models.BooleanField(default=False)
+    published_objects = PublishedBookManager()
     authors = models.ManyToManyField(Person, related_name='books')
     fun_authors = models.ManyToManyField(FunPerson, related_name='books')
     favorite_things = GenericRelation(
@@ -151,21 +151,16 @@ class Book(models.Model):
         object_id_field='favorite_thing_id',
     )
 
-    published_objects = PublishedBookManager()
-    annotated_objects = AnnotatedBookManager()
-
-    class Meta:
-        base_manager_name = 'annotated_objects'
-
     def __str__(self):
         return self.title
 
 
 class FastCarManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(top_speed__gt=150)
+        return super(FastCarManager, self).get_queryset().filter(top_speed__gt=150)
 
 
+@python_2_unicode_compatible
 class Car(models.Model):
     name = models.CharField(max_length=10)
     mileage = models.IntegerField()
@@ -191,9 +186,10 @@ class FastCarAsDefault(Car):
 
 class RestrictedManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(is_public=True)
+        return super(RestrictedManager, self).get_queryset().filter(is_public=True)
 
 
+@python_2_unicode_compatible
 class RelatedModel(models.Model):
     name = models.CharField(max_length=50)
 
@@ -201,6 +197,7 @@ class RelatedModel(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class RestrictedModel(models.Model):
     name = models.CharField(max_length=50)
     is_public = models.BooleanField(default=False)
@@ -213,6 +210,7 @@ class RestrictedModel(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class OneToOneRestrictedModel(models.Model):
     name = models.CharField(max_length=50)
     is_public = models.BooleanField(default=False)

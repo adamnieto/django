@@ -1,7 +1,9 @@
-import os
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+import sys
 import unittest
-from io import StringIO
-from unittest import mock
+import warnings
 
 from django.conf import settings
 from django.conf.urls import url
@@ -13,7 +15,7 @@ from django.forms import EmailField, IntegerField
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from django.test import (
-    SimpleTestCase, TestCase, TransactionTestCase, skipIfDBFeature,
+    SimpleTestCase, TestCase, ignore_warnings, mock, skipIfDBFeature,
     skipUnlessDBFeature,
 )
 from django.test.html import HTMLParseError, parse_html
@@ -22,6 +24,9 @@ from django.test.utils import (
     setup_test_environment,
 )
 from django.urls import NoReverseMatch, reverse
+from django.utils import six
+from django.utils._os import abspathu
+from django.utils.deprecation import RemovedInDjango20Warning
 
 from .models import Car, Person, PossessedCar
 from .views import empty_response
@@ -119,7 +124,7 @@ class SkippingClassTestCase(SimpleTestCase):
             test_suite.addTest(SkippedTestsSubclass('test_will_be_skipped'))
         except unittest.SkipTest:
             self.fail("SkipTest should not be raised at this stage")
-        result = unittest.TextTestRunner(stream=StringIO()).run(test_suite)
+        result = unittest.TextTestRunner(stream=six.StringIO()).run(test_suite)
         self.assertEqual(result.testsRun, 3)
         self.assertEqual(len(result.skipped), 2)
         self.assertEqual(result.skipped[0][1], 'Database has feature(s) __class__')
@@ -157,32 +162,6 @@ class AssertNumQueriesTests(TestCase):
         self.assertNumQueries(2, test_func)
 
 
-@unittest.skipUnless(
-    connection.vendor != 'sqlite' or not connection.is_in_memory_db(),
-    'For SQLite in-memory tests, closing the connection destroys the database.'
-)
-class AssertNumQueriesUponConnectionTests(TransactionTestCase):
-    available_apps = []
-
-    def test_ignores_connection_configuration_queries(self):
-        real_ensure_connection = connection.ensure_connection
-        connection.close()
-
-        def make_configuration_query():
-            is_opening_connection = connection.connection is None
-            real_ensure_connection()
-
-            if is_opening_connection:
-                # Avoid infinite recursion. Creating a cursor calls
-                # ensure_connection() which is currently mocked by this method.
-                connection.cursor().execute('SELECT 1' + connection.features.bare_select_suffix)
-
-        ensure_connection = 'django.db.backends.base.base.BaseDatabaseWrapper.ensure_connection'
-        with mock.patch(ensure_connection, side_effect=make_configuration_query):
-            with self.assertNumQueries(1):
-                list(Car.objects.all())
-
-
 class AssertQuerysetEqualTests(TestCase):
     def setUp(self):
         self.p1 = Person.objects.create(name='p1')
@@ -211,8 +190,7 @@ class AssertQuerysetEqualTests(TestCase):
     def test_undefined_order(self):
         # Using an unordered queryset with more than one ordered value
         # is an error.
-        msg = 'Trying to compare non-ordered queryset against more than one ordered values'
-        with self.assertRaisesMessage(ValueError, msg):
+        with self.assertRaises(ValueError):
             self.assertQuerysetEqual(
                 Person.objects.all(),
                 [repr(self.p1), repr(self.p2)]
@@ -255,7 +233,7 @@ class AssertQuerysetEqualTests(TestCase):
 class CaptureQueriesContextManagerTests(TestCase):
 
     def setUp(self):
-        self.person_pk = str(Person.objects.create(name='test').pk)
+        self.person_pk = six.text_type(Person.objects.create(name='test').pk)
 
     def test_simple(self):
         with CaptureQueriesContext(connection) as captured_queries:
@@ -323,10 +301,8 @@ class AssertNumQueriesContextManagerTests(TestCase):
         with self.assertRaises(AssertionError) as exc_info:
             with self.assertNumQueries(2):
                 Person.objects.count()
-        exc_lines = str(exc_info.exception).split('\n')
-        self.assertEqual(exc_lines[0], '1 != 2 : 1 queries executed, 2 expected')
-        self.assertEqual(exc_lines[1], 'Captured queries were:')
-        self.assertTrue(exc_lines[2].startswith('1.'))  # queries are numbered
+        self.assertIn("1 queries executed, 2 expected", str(exc_info.exception))
+        self.assertIn("Captured queries were", str(exc_info.exception))
 
         with self.assertRaises(TypeError):
             with self.assertNumQueries(4000):
@@ -393,51 +369,41 @@ class AssertTemplateUsedContextManagerTests(SimpleTestCase):
             pass
 
     def test_error_message(self):
-        msg = 'template_used/base.html was not rendered. No template was rendered.'
-        with self.assertRaisesMessage(AssertionError, msg):
+        with self.assertRaisesRegex(AssertionError, r'^template_used/base\.html'):
             with self.assertTemplateUsed('template_used/base.html'):
                 pass
 
-        with self.assertRaisesMessage(AssertionError, msg):
+        with self.assertRaisesRegex(AssertionError, r'^template_used/base\.html'):
             with self.assertTemplateUsed(template_name='template_used/base.html'):
                 pass
 
-        msg2 = (
-            'template_used/base.html was not rendered. Following templates '
-            'were rendered: template_used/alternative.html'
-        )
-        with self.assertRaisesMessage(AssertionError, msg2):
+        with self.assertRaisesRegex(AssertionError, r'^template_used/base\.html.*template_used/alternative\.html$'):
             with self.assertTemplateUsed('template_used/base.html'):
                 render_to_string('template_used/alternative.html')
 
-        with self.assertRaisesMessage(AssertionError, 'No templates used to render the response'):
+        with self.assertRaises(AssertionError) as cm:
             response = self.client.get('/test_utils/no_template_used/')
             self.assertTemplateUsed(response, 'template_used/base.html')
+        self.assertEqual(cm.exception.args[0], "No templates used to render the response")
 
     def test_failure(self):
-        msg = 'response and/or template_name argument must be provided'
-        with self.assertRaisesMessage(TypeError, msg):
+        with self.assertRaises(TypeError):
             with self.assertTemplateUsed():
                 pass
 
-        msg = 'No templates used to render the response'
-        with self.assertRaisesMessage(AssertionError, msg):
+        with self.assertRaises(AssertionError):
             with self.assertTemplateUsed(''):
                 pass
 
-        with self.assertRaisesMessage(AssertionError, msg):
+        with self.assertRaises(AssertionError):
             with self.assertTemplateUsed(''):
                 render_to_string('template_used/base.html')
 
-        with self.assertRaisesMessage(AssertionError, msg):
+        with self.assertRaises(AssertionError):
             with self.assertTemplateUsed(template_name=''):
                 pass
 
-        msg = (
-            'template_used/base.html was not rendered. Following '
-            'templates were rendered: template_used/alternative.html'
-        )
-        with self.assertRaisesMessage(AssertionError, msg):
+        with self.assertRaises(AssertionError):
             with self.assertTemplateUsed('template_used/base.html'):
                 render_to_string('template_used/alternative.html')
 
@@ -683,6 +649,9 @@ class HTMLEqualTests(SimpleTestCase):
         error_msg = (
             "First argument is not valid HTML:\n"
             "('Unexpected end tag `div` (Line 1, Column 6)', (1, 6))"
+        ) if sys.version_info >= (3, 5) else (
+            "First argument is not valid HTML:\n"
+            "Unexpected end tag `div` (Line 1, Column 6), at line 1, column 7"
         )
         with self.assertRaisesMessage(AssertionError, error_msg):
             self.assertHTMLEqual('< div></ div>', '<div></div>')
@@ -833,7 +802,7 @@ class SkippingExtraTests(TestCase):
     def __call__(self, result=None):
         # Detect fixture loading by counting SQL queries, should be zero
         with self.assertNumQueries(0):
-            super().__call__(result)
+            super(SkippingExtraTests, self).__call__(result)
 
     @unittest.skip("Fixture loading should not be performed for skipped tests.")
     def test_fixtures_are_skipped(self):
@@ -862,6 +831,23 @@ class AssertRaisesMsgTest(SimpleTestCase):
             raise ValueError("[.*x+]y?")
         with self.assertRaisesMessage(ValueError, "[.*x+]y?"):
             func1()
+
+    @ignore_warnings(category=RemovedInDjango20Warning)
+    def test_callable_obj_param(self):
+        # callable_obj was a documented kwarg in Django 1.8 and older.
+        def func1():
+            raise ValueError("[.*x+]y?")
+
+        with warnings.catch_warnings(record=True) as warns:
+            warnings.simplefilter('always')
+            self.assertRaisesMessage(ValueError, "[.*x+]y?", callable_obj=func1)
+
+        self.assertEqual(len(warns), 1)
+        self.assertEqual(
+            str(warns[0].message),
+            'The callable_obj kwarg is deprecated. Pass the callable '
+            'as a positional argument instead.'
+        )
 
 
 class AssertFieldOutputTests(SimpleTestCase):
@@ -902,13 +888,12 @@ class SetupTestEnvironmentTests(SimpleTestCase):
 
     def test_allowed_hosts(self):
         for type_ in (list, tuple):
-            with self.subTest(type_=type_):
-                allowed_hosts = type_('*')
-                with mock.patch('django.test.utils._TestState') as x:
-                    del x.saved_data
-                    with self.settings(ALLOWED_HOSTS=allowed_hosts):
-                        setup_test_environment()
-                        self.assertEqual(settings.ALLOWED_HOSTS, ['*', 'testserver'])
+            allowed_hosts = type_('*')
+            with mock.patch('django.test.utils._TestState') as x:
+                del x.saved_data
+                with self.settings(ALLOWED_HOSTS=allowed_hosts):
+                    setup_test_environment()
+                    self.assertEqual(settings.ALLOWED_HOSTS, ['*', 'testserver'])
 
 
 class OverrideSettingsTests(SimpleTestCase):
@@ -992,9 +977,9 @@ class OverrideSettingsTests(SimpleTestCase):
         """
         Overriding DATABASE_ROUTERS should update the master router.
         """
-        test_routers = [object()]
+        test_routers = (object(),)
         with self.settings(DATABASE_ROUTERS=test_routers):
-            self.assertEqual(router.routers, test_routers)
+            self.assertSequenceEqual(router.routers, test_routers)
 
     def test_override_static_url(self):
         """
@@ -1012,7 +997,7 @@ class OverrideSettingsTests(SimpleTestCase):
         django.contrib.staticfiles.storage.staticfiles_storage.
         """
         with self.settings(STATIC_ROOT='/tmp/test'):
-            self.assertEqual(staticfiles_storage.location, os.path.abspath('/tmp/test'))
+            self.assertEqual(staticfiles_storage.location, abspathu('/tmp/test'))
 
     def test_override_staticfiles_storage(self):
         """
@@ -1061,7 +1046,7 @@ class TestBadSetUpTestData(TestCase):
     @classmethod
     def setUpClass(cls):
         try:
-            super().setUpClass()
+            super(TestBadSetUpTestData, cls).setUpClass()
         except cls.MyException:
             cls._in_atomic_block = connection.in_atomic_block
 

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import shutil
 from unittest import skipIf
@@ -7,6 +9,7 @@ from django.core.files import File
 from django.core.files.images import ImageFile
 from django.test import TestCase
 from django.test.testcases import SerializeMixin
+from django.utils._os import upath
 
 try:
     from .models import Image
@@ -21,7 +24,7 @@ if Image:
     from .models import temp_storage_dir
 else:
     # Pillow not available, create dummy classes (tests will be skipped anyway)
-    class Person:
+    class Person():
         pass
     PersonWithHeight = PersonWithHeightAndWidth = PersonDimensionsFirst = Person
     PersonTwoImages = Person
@@ -50,10 +53,10 @@ class ImageFieldTestMixin(SerializeMixin):
             shutil.rmtree(temp_storage_dir)
         os.mkdir(temp_storage_dir)
 
-        file_path1 = os.path.join(os.path.dirname(__file__), '4x8.png')
+        file_path1 = os.path.join(os.path.dirname(upath(__file__)), "4x8.png")
         self.file1 = self.File(open(file_path1, 'rb'), name='4x8.png')
 
-        file_path2 = os.path.join(os.path.dirname(__file__), '8x4.png')
+        file_path2 = os.path.join(os.path.dirname(upath(__file__)), "8x4.png")
         self.file2 = self.File(open(file_path2, 'rb'), name='8x4.png')
 
     def tearDown(self):
@@ -64,7 +67,8 @@ class ImageFieldTestMixin(SerializeMixin):
         self.file2.close()
         shutil.rmtree(temp_storage_dir)
 
-    def check_dimensions(self, instance, width, height, field_name='mugshot'):
+    def check_dimensions(self, instance, width, height,
+                         field_name='mugshot'):
         """
         Asserts that the given width and height values match both the
         field's height and width attributes and the height and width fields
@@ -362,7 +366,8 @@ class TwoImageFieldTests(ImageFieldTestMixin, TestCase):
         self.check_dimensions(p, 8, 4, 'headshot')
 
     def test_create(self):
-        p = self.PersonModel.objects.create(mugshot=self.file1, headshot=self.file2)
+        p = self.PersonModel.objects.create(mugshot=self.file1,
+                                            headshot=self.file2)
         self.check_dimensions(p, 4, 8)
         self.check_dimensions(p, 8, 4, 'headshot')
 

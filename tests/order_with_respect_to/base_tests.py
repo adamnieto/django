@@ -2,10 +2,12 @@
 The tests are shared with contenttypes_tests and so shouldn't import or
 reference any models directly. Subclasses should inherit django.test.TestCase.
 """
+from __future__ import unicode_literals
+
 from operator import attrgetter
 
 
-class BaseOrderWithRespectToTests:
+class BaseOrderWithRespectToTests(object):
     # Hook to allow subclasses to run these tests with alternate models.
     Answer = None
     Post = None
@@ -48,7 +50,9 @@ class BaseOrderWithRespectToTests:
         # It doesn't matter which answer we use to check the order, it will
         # always be the same.
         a2 = self.Answer.objects.create(text="Number five", question=self.q1)
-        self.assertEqual(list(a1.question.get_answer_order()), list(a2.question.get_answer_order()))
+        self.assertListEqual(
+            list(a1.question.get_answer_order()), list(a2.question.get_answer_order())
+        )
 
     def test_change_ordering(self):
         # The ordering can be altered

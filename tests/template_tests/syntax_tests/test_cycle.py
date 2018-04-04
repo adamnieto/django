@@ -8,20 +8,22 @@ class CycleTagTests(SimpleTestCase):
 
     @setup({'cycle01': '{% cycle a %}'})
     def test_cycle01(self):
-        msg = "No named cycles in template. 'a' is not defined"
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             self.engine.get_template('cycle01')
 
     @setup({'cycle05': '{% cycle %}'})
     def test_cycle05(self):
-        msg = "'cycle' tag requires at least two arguments"
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             self.engine.get_template('cycle05')
+
+    @setup({'cycle06': '{% cycle a %}'})
+    def test_cycle06(self):
+        with self.assertRaises(TemplateSyntaxError):
+            self.engine.get_template('cycle06')
 
     @setup({'cycle07': '{% cycle a,b,c as foo %}{% cycle bar %}'})
     def test_cycle07(self):
-        msg = "Could not parse the remainder: ',b,c' from 'a,b,c'"
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             self.engine.get_template('cycle07')
 
     @setup({'cycle10': "{% cycle 'a' 'b' 'c' as abc %}{% cycle abc %}"})
@@ -67,8 +69,7 @@ class CycleTagTests(SimpleTestCase):
 
     @setup({'cycle18': "{% cycle 'a' 'b' 'c' as foo invalid_flag %}"})
     def test_cycle18(self):
-        msg = "Only 'silent' flag is allowed after cycle's name, not 'invalid_flag'."
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             self.engine.get_template('cycle18')
 
     @setup({'cycle19': "{% cycle 'a' 'b' as silent %}{% cycle silent %}"})
@@ -166,14 +167,3 @@ class CycleTagTests(SimpleTestCase):
                 'values': [1, 2, 3, 4, 5, 6, 7, 8, 8, 8, 9, 9]
             })
         self.assertEqual(output, 'bcabcabcccaa')
-
-    @setup({
-        'undefined_cycle':
-            "{% cycle 'a' 'b' 'c' as cycler silent %}"
-            "{% for x in values %}"
-            "{% cycle undefined %}{{ cycler }}"
-            "{% endfor %}"
-    })
-    def test_cycle_undefined(self):
-        with self.assertRaisesMessage(TemplateSyntaxError, "Named cycle 'undefined' does not exist"):
-            self.engine.render_to_string('undefined_cycle')

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.apps import apps
 from django.apps.registry import Apps
 from django.conf import settings
@@ -10,9 +12,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models.signals import post_migrate
 from django.http import HttpRequest, HttpResponse
-from django.test import (
-    SimpleTestCase, TestCase, modify_settings, override_settings,
-)
+from django.test import TestCase, modify_settings, override_settings
 from django.test.utils import captured_stdout
 
 
@@ -205,34 +205,30 @@ class SitesFrameworkTests(TestCase):
         self.assertEqual(Site.objects.get_by_natural_key(self.site.domain), self.site)
         self.assertEqual(self.site.natural_key(), (self.site.domain,))
 
-
-@override_settings(ALLOWED_HOSTS=['example.com'])
-class RequestSiteTests(SimpleTestCase):
-
-    def setUp(self):
+    @override_settings(ALLOWED_HOSTS=['example.com'])
+    def test_requestsite_save_notimplemented_msg(self):
+        # Test response msg for RequestSite.save NotImplementedError
         request = HttpRequest()
-        request.META = {'HTTP_HOST': 'example.com'}
-        self.site = RequestSite(request)
-
-    def test_init_attributes(self):
-        self.assertEqual(self.site.domain, 'example.com')
-        self.assertEqual(self.site.name, 'example.com')
-
-    def test_str(self):
-        self.assertEqual(str(self.site), 'example.com')
-
-    def test_save(self):
+        request.META = {
+            "HTTP_HOST": "example.com",
+        }
         msg = 'RequestSite cannot be saved.'
         with self.assertRaisesMessage(NotImplementedError, msg):
-            self.site.save()
+            RequestSite(request).save()
 
-    def test_delete(self):
+    @override_settings(ALLOWED_HOSTS=['example.com'])
+    def test_requestsite_delete_notimplemented_msg(self):
+        # Test response msg for RequestSite.delete NotImplementedError
+        request = HttpRequest()
+        request.META = {
+            "HTTP_HOST": "example.com",
+        }
         msg = 'RequestSite cannot be deleted.'
         with self.assertRaisesMessage(NotImplementedError, msg):
-            self.site.delete()
+            RequestSite(request).delete()
 
 
-class JustOtherRouter:
+class JustOtherRouter(object):
     def allow_migrate(self, db, app_label, **hints):
         return db == 'other'
 

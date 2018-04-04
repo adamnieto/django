@@ -1,5 +1,9 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import logging
 import re
+import warnings
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -11,6 +15,8 @@ from django.middleware.csrf import (
 )
 from django.test import SimpleTestCase, override_settings
 from django.test.utils import patch_logger
+from django.utils.encoding import force_bytes
+from django.utils.six import text_type
 from django.views.decorators.csrf import csrf_exempt, requires_csrf_token
 
 from .views import (
@@ -25,7 +31,7 @@ class TestingHttpRequest(HttpRequest):
     more easily
     """
     def __init__(self):
-        super().__init__()
+        super(TestingHttpRequest, self).__init__()
         # A real session backend isn't needed.
         self.session = {}
 
@@ -33,7 +39,7 @@ class TestingHttpRequest(HttpRequest):
         return getattr(self, '_is_secure_override', False)
 
 
-class CsrfViewMiddlewareTestMixin:
+class CsrfViewMiddlewareTestMixin(object):
     """
     Shared methods and tests for session-based and cookie-based tokens.
     """
@@ -63,7 +69,7 @@ class CsrfViewMiddlewareTestMixin:
         return req
 
     def _check_token_present(self, response, csrf_id=None):
-        text = str(response.content, response.charset)
+        text = text_type(response.content, response.charset)
         match = re.search("name='csrfmiddlewaretoken' value='(.*?)'", text)
         csrf_token = csrf_id or self._csrf_id
         self.assertTrue(
@@ -210,7 +216,7 @@ class CsrfViewMiddlewareTestMixin:
         A new token is sent if the csrf_cookie is the empty string.
         """
         req = self._get_GET_no_csrf_cookie_request()
-        req.COOKIES[settings.CSRF_COOKIE_NAME] = ""
+        req.COOKIES[settings.CSRF_COOKIE_NAME] = b""
         self.mw.process_view(req, token_view, (), {})
         resp = token_view(req)
 
@@ -294,19 +300,6 @@ class CsrfViewMiddlewareTestMixin:
             status_code=403,
         )
 
-    def test_https_malformed_host(self):
-        """
-        CsrfViewMiddleware generates a 403 response if it receives an HTTPS
-        request with a bad host.
-        """
-        req = self._get_GET_no_csrf_cookie_request()
-        req._is_secure_override = True
-        req.META['HTTP_HOST'] = '@malformed'
-        req.META['HTTP_REFERER'] = 'https://www.evil.org/somepage'
-        req.META['SERVER_PORT'] = '443'
-        response = self.mw.process_view(req, token_view, (), {})
-        self.assertEqual(response.status_code, 403)
-
     @override_settings(DEBUG=True)
     def test_https_malformed_referer(self):
         """
@@ -327,7 +320,7 @@ class CsrfViewMiddlewareTestMixin:
         response = self.mw.process_view(req, post_form_view, (), {})
         self.assertContains(response, malformed_referer_msg, status_code=403)
         # Non-ASCII
-        req.META['HTTP_REFERER'] = 'ØBöIß'
+        req.META['HTTP_REFERER'] = b'\xd8B\xf6I\xdf'
         response = self.mw.process_view(req, post_form_view, (), {})
         self.assertContains(response, malformed_referer_msg, status_code=403)
         # missing scheme
@@ -463,7 +456,7 @@ class CsrfViewMiddlewareTestMixin:
             HttpRequest that can raise an IOError when accessing POST data
             """
             def __init__(self, token, raise_error):
-                super().__init__()
+                super(CsrfPostRequest, self).__init__()
                 self.method = 'POST'
 
                 self.raise_error = False
@@ -598,6 +591,24 @@ class CsrfViewMiddlewareTests(CsrfViewMiddlewareTestMixin, SimpleTestCase):
         resp2 = self.mw.process_response(req, resp)
         csrf_cookie = resp2.cookies.get(settings.CSRF_COOKIE_NAME, False)
         self.assertEqual(len(csrf_cookie.value), CSRF_TOKEN_LENGTH)
+
+    def test_process_view_token_invalid_bytes(self):
+        """
+        If the token contains improperly encoded unicode, it is ignored and a
+        new token is created.
+        """
+        token = (b"<1>\xc2\xa1" + force_bytes(self._csrf_id, 'ascii'))[:CSRF_TOKEN_LENGTH]
+        req = self._get_GET_no_csrf_cookie_request()
+        req.COOKIES[settings.CSRF_COOKIE_NAME] = token
+        # We expect a UnicodeWarning here, because we used broken utf-8 on purpose
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=UnicodeWarning)
+            CsrfViewMiddleware().process_view(req, token_view, (), {})
+        resp = token_view(req)
+        resp2 = CsrfViewMiddleware().process_response(req, resp)
+        csrf_cookie = resp2.cookies.get(settings.CSRF_COOKIE_NAME, False)
+        self.assertEqual(len(csrf_cookie.value), CSRF_TOKEN_LENGTH)
+        self.assertNotEqual(csrf_cookie.value, token)
 
     def test_process_view_token_invalid_chars(self):
         """

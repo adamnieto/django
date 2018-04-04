@@ -128,21 +128,17 @@ class FlatpageTemplateTagTests(TestCase):
         def render(t):
             return Template(t).render(Context())
 
-        msg = (
-            "get_flatpages expects a syntax of get_flatpages "
-            "['url_starts_with'] [for user] as context_name"
-        )
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             render("{% load flatpages %}{% get_flatpages %}")
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             render("{% load flatpages %}{% get_flatpages as %}")
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             render("{% load flatpages %}{% get_flatpages cheesecake flatpages %}")
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             render("{% load flatpages %}{% get_flatpages as flatpages asdf %}")
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             render("{% load flatpages %}{% get_flatpages cheesecake user as flatpages %}")
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             render("{% load flatpages %}{% get_flatpages for user as flatpages asdf %}")
-        with self.assertRaisesMessage(TemplateSyntaxError, msg):
+        with self.assertRaises(TemplateSyntaxError):
             render("{% load flatpages %}{% get_flatpages prefix for user as flatpages asdf %}")

@@ -1,8 +1,9 @@
-from io import StringIO
+from __future__ import unicode_literals
 
 from django.contrib.auth.models import User
 from django.core import management
 from django.test import TestCase
+from django.utils.six import StringIO
 
 from .models import (
     Car, CarDriver, Driver, Group, Membership, Person, UserMembership,

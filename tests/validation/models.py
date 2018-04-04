@@ -1,7 +1,10 @@
+from __future__ import unicode_literals
+
 from datetime import datetime
 
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
 def validate_answer_to_universe(value):
@@ -33,7 +36,7 @@ class ModelToValidate(models.Model):
     slug = models.SlugField(blank=True)
 
     def clean(self):
-        super().clean()
+        super(ModelToValidate, self).clean()
         if self.number == 11:
             raise ValidationError('Invalid number supplied!')
 
@@ -88,6 +91,7 @@ class Article(models.Model):
             self.pub_date = datetime.now()
 
 
+@python_2_unicode_compatible
 class Post(models.Model):
     title = models.CharField(max_length=50, unique_for_date='posted', blank=True)
     slug = models.CharField(max_length=50, unique_for_year='posted', blank=True)
@@ -130,4 +134,4 @@ try:
         auto2 = models.AutoField(primary_key=True)
 except AssertionError as exc:
     assertion_error = exc
-assert str(assertion_error) == "Model validation.MultipleAutoFields can't have more than one AutoField."
+assert str(assertion_error) == "A model can't have more than one AutoField."

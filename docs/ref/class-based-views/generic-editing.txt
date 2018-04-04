@@ -68,7 +68,7 @@ editing content:
                 # This method is called when valid form data has been POSTed.
                 # It should return an HttpResponse.
                 form.send_email()
-                return super().form_valid(form)
+                return super(ContactView, self).form_valid(form)
 
     **Example myapp/contact.html**:
 
@@ -76,7 +76,7 @@ editing content:
 
         <form action="" method="post">{% csrf_token %}
             {{ form.as_p }}
-            <input type="submit" value="Send message">
+            <input type="submit" value="Send message" />
         </form>
 
 
@@ -132,7 +132,7 @@ editing content:
 
         <form action="" method="post">{% csrf_token %}
             {{ form.as_p }}
-            <input type="submit" value="Save">
+            <input type="submit" value="Save" />
         </form>
 
 ``UpdateView``
@@ -189,7 +189,7 @@ editing content:
 
         <form action="" method="post">{% csrf_token %}
             {{ form.as_p }}
-            <input type="submit" value="Update">
+            <input type="submit" value="Update" />
         </form>
 
 ``DeleteView``
@@ -240,5 +240,5 @@ editing content:
 
         <form action="" method="post">{% csrf_token %}
             <p>Are you sure you want to delete "{{ object }}"?</p>
-            <input type="submit" value="Confirm">
+            <input type="submit" value="Confirm" />
         </form>

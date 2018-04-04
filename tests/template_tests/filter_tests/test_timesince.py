@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from datetime import datetime, timedelta
 
 from django.template.defaultfilters import timesince_filter
@@ -130,9 +132,6 @@ class FunctionTests(SimpleTestCase):
 
     def test_since_now(self):
         self.assertEqual(timesince_filter(datetime.now() - timedelta(1)), '1\xa0day')
-
-    def test_no_args(self):
-        self.assertEqual(timesince_filter(None), '')
 
     def test_explicit_date(self):
         self.assertEqual(timesince_filter(datetime(2005, 12, 29), datetime(2005, 12, 30)), '1\xa0day')

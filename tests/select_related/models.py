@@ -12,10 +12,12 @@ from django.contrib.contenttypes.fields import (
 )
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 # Who remembers high school biology?
 
 
+@python_2_unicode_compatible
 class Domain(models.Model):
     name = models.CharField(max_length=50)
 
@@ -23,6 +25,7 @@ class Domain(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Kingdom(models.Model):
     name = models.CharField(max_length=50)
     domain = models.ForeignKey(Domain, models.CASCADE)
@@ -31,6 +34,7 @@ class Kingdom(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Phylum(models.Model):
     name = models.CharField(max_length=50)
     kingdom = models.ForeignKey(Kingdom, models.CASCADE)
@@ -39,6 +43,7 @@ class Phylum(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Klass(models.Model):
     name = models.CharField(max_length=50)
     phylum = models.ForeignKey(Phylum, models.CASCADE)
@@ -47,6 +52,7 @@ class Klass(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Order(models.Model):
     name = models.CharField(max_length=50)
     klass = models.ForeignKey(Klass, models.CASCADE)
@@ -55,6 +61,7 @@ class Order(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Family(models.Model):
     name = models.CharField(max_length=50)
     order = models.ForeignKey(Order, models.CASCADE)
@@ -63,6 +70,7 @@ class Family(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Genus(models.Model):
     name = models.CharField(max_length=50)
     family = models.ForeignKey(Family, models.CASCADE)
@@ -71,6 +79,7 @@ class Genus(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Species(models.Model):
     name = models.CharField(max_length=50)
     genus = models.ForeignKey(Genus, models.CASCADE)
@@ -81,6 +90,7 @@ class Species(models.Model):
 # and we'll invent a new thing so we have a model with two foreign keys
 
 
+@python_2_unicode_compatible
 class HybridSpecies(models.Model):
     name = models.CharField(max_length=50)
     parent_1 = models.ForeignKey(Species, models.CASCADE, related_name='child_1')
@@ -90,6 +100,7 @@ class HybridSpecies(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Topping(models.Model):
     name = models.CharField(max_length=30)
 
@@ -97,6 +108,7 @@ class Topping(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Pizza(models.Model):
     name = models.CharField(max_length=100)
     toppings = models.ManyToManyField(Topping)
@@ -105,6 +117,7 @@ class Pizza(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class TaggedItem(models.Model):
     tag = models.CharField(max_length=30)
 
@@ -116,6 +129,7 @@ class TaggedItem(models.Model):
         return self.tag
 
 
+@python_2_unicode_compatible
 class Bookmark(models.Model):
     url = models.URLField()
     tags = GenericRelation(TaggedItem)

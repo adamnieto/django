@@ -18,7 +18,6 @@ class MigrationTestBase(TransactionTestCase):
     """
 
     available_apps = ["migrations"]
-    multi_db = True
 
     def tearDown(self):
         # Reset applied-migrations state.
@@ -99,7 +98,8 @@ class MigrationTestBase(TransactionTestCase):
 
         Returns the filesystem path to the temporary migrations module.
         """
-        with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = tempfile.mkdtemp()
+        try:
             target_dir = tempfile.mkdtemp(dir=temp_dir)
             with open(os.path.join(target_dir, '__init__.py'), 'w'):
                 pass
@@ -119,3 +119,6 @@ class MigrationTestBase(TransactionTestCase):
                 new_module = os.path.basename(target_dir) + '.migrations'
                 with self.settings(MIGRATION_MODULES={app_label: new_module}):
                     yield target_migrations_dir
+
+        finally:
+            shutil.rmtree(temp_dir)

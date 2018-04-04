@@ -5,6 +5,7 @@ Tests for stuff in django.utils.datastructures.
 import copy
 
 from django.test import SimpleTestCase
+from django.utils import six
 from django.utils.datastructures import (
     DictWrapper, ImmutableList, MultiValueDict, MultiValueDictKeyError,
     OrderedSet,
@@ -39,18 +40,17 @@ class MultiValueDictTests(SimpleTestCase):
         self.assertEqual(d.get('name'), 'Simon')
         self.assertEqual(d.getlist('name'), ['Adrian', 'Simon'])
         self.assertEqual(
-            sorted(d.items()),
+            sorted(six.iteritems(d)),
             [('name', 'Simon'), ('position', 'Developer')]
         )
 
         self.assertEqual(
-            sorted(d.lists()),
+            sorted(six.iterlists(d)),
             [('name', ['Adrian', 'Simon']), ('position', ['Developer'])]
         )
 
-        with self.assertRaises(MultiValueDictKeyError) as cm:
+        with self.assertRaisesMessage(MultiValueDictKeyError, 'lastname'):
             d.__getitem__('lastname')
-        self.assertEqual(str(cm.exception), "'lastname'")
 
         self.assertIsNone(d.get('lastname'))
         self.assertEqual(d.get('lastname', 'nonexistent'), 'nonexistent')
@@ -60,7 +60,8 @@ class MultiValueDictTests(SimpleTestCase):
 
         d.setlist('lastname', ['Holovaty', 'Willison'])
         self.assertEqual(d.getlist('lastname'), ['Holovaty', 'Willison'])
-        self.assertEqual(sorted(d.values()), ['Developer', 'Simon', 'Willison'])
+        self.assertEqual(sorted(six.itervalues(d)),
+                         ['Developer', 'Simon', 'Willison'])
 
     def test_appendlist(self):
         d = MultiValueDict()
@@ -94,8 +95,8 @@ class MultiValueDictTests(SimpleTestCase):
             'pm': ['Rory'],
         })
         d = mvd.dict()
-        self.assertEqual(sorted(d), sorted(mvd))
-        for key in mvd:
+        self.assertEqual(sorted(six.iterkeys(d)), sorted(six.iterkeys(mvd)))
+        for key in six.iterkeys(mvd):
             self.assertEqual(d[key], mvd[key])
 
         self.assertEqual({}, MultiValueDict().dict())

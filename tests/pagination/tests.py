@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import unittest
 import warnings
 from datetime import datetime
@@ -7,6 +9,7 @@ from django.core.paginator import (
     UnorderedObjectListWarning,
 )
 from django.test import TestCase
+from django.utils import six
 
 from .custom import ValidAdjacentNumsPaginator
 from .models import Article
@@ -125,7 +128,7 @@ class PaginationTests(unittest.TestCase):
         self.assertEqual(paginator.validate_number(1), 1)
 
     def test_paginate_misc_classes(self):
-        class CountContainer:
+        class CountContainer(object):
             def count(self):
                 return 42
         # Paginator can be passed other objects with a count() method.
@@ -135,7 +138,7 @@ class PaginationTests(unittest.TestCase):
         self.assertEqual([1, 2, 3, 4, 5], list(paginator.page_range))
 
         # Paginator can be passed other objects that implement __len__.
-        class LenContainer:
+        class LenContainer(object):
             def __len__(self):
                 return 42
         paginator = Paginator(LenContainer(), 10)
@@ -240,39 +243,7 @@ class PaginationTests(unittest.TestCase):
         """
         Paginator.page_range should be an iterator.
         """
-        self.assertIsInstance(Paginator([1, 2, 3], 2).page_range, type(range(0)))
-
-    def test_get_page(self):
-        """
-        Paginator.get_page() returns a valid page even with invalid page
-        arguments.
-        """
-        paginator = Paginator([1, 2, 3], 2)
-        page = paginator.get_page(1)
-        self.assertEqual(page.number, 1)
-        self.assertEqual(page.object_list, [1, 2])
-        # An empty page returns the last page.
-        self.assertEqual(paginator.get_page(3).number, 2)
-        # Non-integer page returns the first page.
-        self.assertEqual(paginator.get_page(None).number, 1)
-
-    def test_get_page_empty_object_list(self):
-        """Paginator.get_page() with an empty object_list."""
-        paginator = Paginator([], 2)
-        # An empty page returns the last page.
-        self.assertEqual(paginator.get_page(1).number, 1)
-        self.assertEqual(paginator.get_page(2).number, 1)
-        # Non-integer page returns the first page.
-        self.assertEqual(paginator.get_page(None).number, 1)
-
-    def test_get_page_empty_object_list_and_allow_empty_first_page_false(self):
-        """
-        Paginator.get_page() raises EmptyPage if allow_empty_first_page=False
-        and object_list is empty.
-        """
-        paginator = Paginator([], 2, allow_empty_first_page=False)
-        with self.assertRaises(EmptyPage):
-            paginator.get_page(1)
+        self.assertIsInstance(Paginator([1, 2, 3], 2).page_range, type(six.moves.range(0)))
 
 
 class ModelPaginationTests(TestCase):
@@ -288,7 +259,7 @@ class ModelPaginationTests(TestCase):
     def test_first_page(self):
         paginator = Paginator(Article.objects.order_by('id'), 5)
         p = paginator.page(1)
-        self.assertEqual("<Page 1 of 2>", str(p))
+        self.assertEqual("<Page 1 of 2>", six.text_type(p))
         self.assertQuerysetEqual(p.object_list, [
             "<Article: Article 1>",
             "<Article: Article 2>",
@@ -308,7 +279,7 @@ class ModelPaginationTests(TestCase):
     def test_last_page(self):
         paginator = Paginator(Article.objects.order_by('id'), 5)
         p = paginator.page(2)
-        self.assertEqual("<Page 2 of 2>", str(p))
+        self.assertEqual("<Page 2 of 2>", six.text_type(p))
         self.assertQuerysetEqual(p.object_list, [
             "<Article: Article 6>",
             "<Article: Article 7>",
@@ -371,7 +342,7 @@ class ModelPaginationTests(TestCase):
         Unordered object list warning with an object that has an orderd
         attribute but not a model attribute.
         """
-        class ObjectList:
+        class ObjectList():
             ordered = False
         object_list = ObjectList()
         with warnings.catch_warnings(record=True) as warns:

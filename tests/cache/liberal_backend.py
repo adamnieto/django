@@ -1,7 +1,7 @@
 from django.core.cache.backends.locmem import LocMemCache
 
 
-class LiberalKeyValidationMixin:
+class LiberalKeyValidationMixin(object):
     def validate_key(self, key):
         pass
 

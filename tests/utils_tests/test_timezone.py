@@ -1,10 +1,9 @@
 import datetime
 import pickle
-from unittest import mock
 
 import pytz
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, mock, override_settings
 from django.utils import timezone
 
 CET = pytz.timezone("Europe/Paris")
@@ -192,10 +191,6 @@ class TimezoneTests(SimpleTestCase):
 
     def test_fixedoffset_timedelta(self):
         delta = datetime.timedelta(hours=1)
-        self.assertEqual(timezone.get_fixed_timezone(delta).utcoffset(''), delta)
-
-    def test_fixedoffset_negative_timedelta(self):
-        delta = datetime.timedelta(hours=-2)
         self.assertEqual(timezone.get_fixed_timezone(delta).utcoffset(''), delta)
 
     def test_fixedoffset_pickle(self):

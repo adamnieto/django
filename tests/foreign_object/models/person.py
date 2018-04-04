@@ -1,8 +1,10 @@
 import datetime
 
 from django.db import models
+from django.utils.encoding import python_2_unicode_compatible
 
 
+@python_2_unicode_compatible
 class Country(models.Model):
     # Table Column Fields
     name = models.CharField(max_length=50)
@@ -11,6 +13,7 @@ class Country(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Person(models.Model):
     # Table Column Fields
     name = models.CharField(max_length=128)
@@ -32,6 +35,7 @@ class Person(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Group(models.Model):
     # Table Column Fields
     name = models.CharField(max_length=128)
@@ -45,6 +49,7 @@ class Group(models.Model):
         return self.name
 
 
+@python_2_unicode_compatible
 class Membership(models.Model):
     # Table Column Fields
     membership_country = models.ForeignKey(Country, models.CASCADE)
@@ -88,8 +93,7 @@ class Friendship(models.Model):
         on_delete=models.CASCADE,
         from_fields=['from_friend_country', 'from_friend_id'],
         to_fields=['person_country_id', 'id'],
-        related_name='from_friend',
-    )
+        related_name='from_friend')
 
     to_friend_country = models.ForeignObject(
         Country,

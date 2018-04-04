@@ -1,5 +1,7 @@
 import os
 
+from django.utils._os import upath
+
 AUTH_MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -7,7 +9,7 @@ AUTH_MIDDLEWARE = [
 
 AUTH_TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
-    'DIRS': [os.path.join(os.path.dirname(__file__), 'templates')],
+    'DIRS': [os.path.join(os.path.dirname(upath(__file__)), 'templates')],
     'APP_DIRS': True,
     'OPTIONS': {
         'context_processors': [

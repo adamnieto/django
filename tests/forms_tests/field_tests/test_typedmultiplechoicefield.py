@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import decimal
 
 from django.forms import TypedMultipleChoiceField, ValidationError

@@ -1,9 +1,13 @@
+# -*- coding: utf8 -*-
+from __future__ import unicode_literals
+
+import locale
 import os
-import signal
-from unittest import mock
 
 from django.db.backends.postgresql.client import DatabaseClient
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, mock
+from django.utils import six
+from django.utils.encoding import force_bytes, force_str
 
 
 class PostgreSqlDbshellCommandTestCase(SimpleTestCase):
@@ -13,12 +17,13 @@ class PostgreSqlDbshellCommandTestCase(SimpleTestCase):
         That function invokes the runshell command, while mocking
         subprocess.call. It returns a 2-tuple with:
         - The command line list
-        - The content of the file pointed by environment PGPASSFILE, or None.
+        - The binary content of file pointed by environment PGPASSFILE, or
+          None.
         """
         def _mock_subprocess_call(*args):
             self.subprocess_args = list(*args)
             if 'PGPASSFILE' in os.environ:
-                with open(os.environ['PGPASSFILE'], 'r') as f:
+                with open(os.environ['PGPASSFILE'], 'rb') as f:
                     self.pgpass = f.read().strip()  # ignore line endings
             else:
                 self.pgpass = None
@@ -39,7 +44,7 @@ class PostgreSqlDbshellCommandTestCase(SimpleTestCase):
                 'port': '444',
             }), (
                 ['psql', '-U', 'someuser', '-h', 'somehost', '-p', '444', 'dbname'],
-                'somehost:444:dbname:someuser:somepassword',
+                b'somehost:444:dbname:someuser:somepassword',
             )
         )
 
@@ -66,7 +71,7 @@ class PostgreSqlDbshellCommandTestCase(SimpleTestCase):
                 'port': '444',
             }), (
                 ['psql', '-U', 'some:user', '-h', '::1', '-p', '444', 'dbname'],
-                '\\:\\:1:444:dbname:some\\:user:some\\:password',
+                b'\\:\\:1:444:dbname:some\\:user:some\\:password',
             )
         )
 
@@ -80,37 +85,34 @@ class PostgreSqlDbshellCommandTestCase(SimpleTestCase):
                 'port': '444',
             }), (
                 ['psql', '-U', 'some\\user', '-h', 'somehost', '-p', '444', 'dbname'],
-                'somehost:444:dbname:some\\\\user:some\\\\password',
+                b'somehost:444:dbname:some\\\\user:some\\\\password',
             )
         )
 
     def test_accent(self):
+        # The pgpass temporary file needs to be encoded using the system locale.
+        encoding = locale.getpreferredencoding()
         username = 'rôle'
         password = 'sésame'
-        pgpass_string = 'somehost:444:dbname:%s:%s' % (username, password)
+        try:
+            username_str = force_str(username, encoding)
+            password_str = force_str(password, encoding)
+            pgpass_bytes = force_bytes(
+                'somehost:444:dbname:%s:%s' % (username, password),
+                encoding=encoding,
+            )
+        except UnicodeEncodeError:
+            if six.PY2:
+                self.skipTest("Your locale can't run this test.")
         self.assertEqual(
             self._run_it({
                 'database': 'dbname',
-                'user': username,
-                'password': password,
+                'user': username_str,
+                'password': password_str,
                 'host': 'somehost',
                 'port': '444',
             }), (
-                ['psql', '-U', username, '-h', 'somehost', '-p', '444', 'dbname'],
-                pgpass_string,
+                ['psql', '-U', username_str, '-h', 'somehost', '-p', '444', 'dbname'],
+                pgpass_bytes,
             )
         )
-
-    def test_sigint_handler(self):
-        """SIGINT is ignored in Python and passed to psql to abort quries."""
-        def _mock_subprocess_call(*args):
-            handler = signal.getsignal(signal.SIGINT)
-            self.assertEqual(handler, signal.SIG_IGN)
-
-        sigint_handler = signal.getsignal(signal.SIGINT)
-        # The default handler isn't SIG_IGN.
-        self.assertNotEqual(sigint_handler, signal.SIG_IGN)
-        with mock.patch('subprocess.check_call', new=_mock_subprocess_call):
-            DatabaseClient.runshell_db({})
-        # dbshell restores the orignal handler.
-        self.assertEqual(sigint_handler, signal.getsignal(signal.SIGINT))

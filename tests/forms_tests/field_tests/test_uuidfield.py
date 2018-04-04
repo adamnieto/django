@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import uuid
 
 from django.forms import UUIDField, ValidationError
@@ -18,8 +20,9 @@ class UUIDFieldTest(SimpleTestCase):
 
     def test_uuidfield_3(self):
         field = UUIDField()
-        with self.assertRaisesMessage(ValidationError, 'Enter a valid UUID.'):
+        with self.assertRaises(ValidationError) as cm:
             field.clean('550e8400')
+        self.assertEqual(cm.exception.messages[0], 'Enter a valid UUID.')
 
     def test_uuidfield_4(self):
         field = UUIDField()

@@ -29,7 +29,7 @@ def receiver_1_arg(val, **kwargs):
     return val
 
 
-class Callable:
+class Callable(object):
     def __call__(self, val, **kwargs):
         return val
 

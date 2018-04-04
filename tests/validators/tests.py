@@ -1,8 +1,11 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+import io
 import os
 import re
 import types
 from datetime import datetime, timedelta
-from decimal import Decimal
 from unittest import TestCase, skipUnless
 
 from django.core.exceptions import ValidationError
@@ -10,13 +13,15 @@ from django.core.files.base import ContentFile
 from django.core.validators import (
     BaseValidator, DecimalValidator, EmailValidator, FileExtensionValidator,
     MaxLengthValidator, MaxValueValidator, MinLengthValidator,
-    MinValueValidator, ProhibitNullCharactersValidator, RegexValidator,
-    URLValidator, int_list_validator, validate_comma_separated_integer_list,
-    validate_email, validate_image_file_extension, validate_integer,
-    validate_ipv4_address, validate_ipv6_address, validate_ipv46_address,
-    validate_slug, validate_unicode_slug,
+    MinValueValidator, RegexValidator, URLValidator, int_list_validator,
+    validate_comma_separated_integer_list, validate_email,
+    validate_image_file_extension, validate_integer, validate_ipv4_address,
+    validate_ipv6_address, validate_ipv46_address, validate_slug,
+    validate_unicode_slug,
 )
 from django.test import SimpleTestCase
+from django.test.utils import str_prefix
+from django.utils._os import upath
 
 try:
     from PIL import Image  # noqa
@@ -249,59 +254,28 @@ TEST_DATA = [
     (RegexValidator('a', flags=re.IGNORECASE), 'A', None),
 
     (FileExtensionValidator(['txt']), ContentFile('contents', name='fileWithUnsupportedExt.jpg'), ValidationError),
-    (FileExtensionValidator(['txt']), ContentFile('contents', name='fileWithUnsupportedExt.JPG'), ValidationError),
-    (FileExtensionValidator(['txt']), ContentFile('contents', name='fileWithNoExtension'), ValidationError),
-    (FileExtensionValidator(['']), ContentFile('contents', name='fileWithAnExtension.txt'), ValidationError),
+    (FileExtensionValidator(['txt']), ContentFile('contents', name='fileWithNoExtenstion'), ValidationError),
     (FileExtensionValidator([]), ContentFile('contents', name='file.txt'), ValidationError),
-
-    (FileExtensionValidator(['']), ContentFile('contents', name='fileWithNoExtension'), None),
     (FileExtensionValidator(['txt']), ContentFile('contents', name='file.txt'), None),
-    (FileExtensionValidator(['txt']), ContentFile('contents', name='file.TXT'), None),
-    (FileExtensionValidator(['TXT']), ContentFile('contents', name='file.txt'), None),
     (FileExtensionValidator(), ContentFile('contents', name='file.jpg'), None),
-
-    (DecimalValidator(max_digits=2, decimal_places=2), Decimal('0.99'), None),
-    (DecimalValidator(max_digits=2, decimal_places=1), Decimal('0.99'), ValidationError),
-    (DecimalValidator(max_digits=3, decimal_places=1), Decimal('999'), ValidationError),
-    (DecimalValidator(max_digits=4, decimal_places=1), Decimal('999'), None),
-    (DecimalValidator(max_digits=20, decimal_places=2), Decimal('742403889818000000'), None),
-    (DecimalValidator(20, 2), Decimal('7.42403889818E+17'), None),
-    (DecimalValidator(max_digits=20, decimal_places=2), Decimal('7424742403889818000000'), ValidationError),
-    (DecimalValidator(max_digits=5, decimal_places=2), Decimal('7304E-1'), None),
-    (DecimalValidator(max_digits=5, decimal_places=2), Decimal('7304E-3'), ValidationError),
-    (DecimalValidator(max_digits=5, decimal_places=5), Decimal('70E-5'), None),
-    (DecimalValidator(max_digits=5, decimal_places=5), Decimal('70E-6'), ValidationError),
-    # 'Enter a number.' errors
-    *[
-        (DecimalValidator(decimal_places=2, max_digits=10), Decimal(value), ValidationError)
-        for value in (
-            'NaN', '-NaN', '+NaN', 'sNaN', '-sNaN', '+sNaN',
-            'Inf', '-Inf', '+Inf', 'Infinity', '-Infinity', '-Infinity',
-        )
-    ],
 
     (validate_image_file_extension, ContentFile('contents', name='file.jpg'), None),
     (validate_image_file_extension, ContentFile('contents', name='file.png'), None),
-    (validate_image_file_extension, ContentFile('contents', name='file.PNG'), None),
     (validate_image_file_extension, ContentFile('contents', name='file.txt'), ValidationError),
     (validate_image_file_extension, ContentFile('contents', name='file'), ValidationError),
-
-    (ProhibitNullCharactersValidator(), '\x00something', ValidationError),
-    (ProhibitNullCharactersValidator(), 'something', None),
-    (ProhibitNullCharactersValidator(), None, None),
 ]
 
 
 def create_path(filename):
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), filename))
+    return os.path.abspath(os.path.join(os.path.dirname(upath(__file__)), filename))
 
 
 # Add valid and invalid URL tests.
 # This only tests the validator without extended schemes.
-with open(create_path('valid_urls.txt'), encoding='utf8') as f:
+with io.open(create_path('valid_urls.txt'), encoding='utf8') as f:
     for url in f:
         TEST_DATA.append((URLValidator(), url.strip(), None))
-with open(create_path('invalid_urls.txt'), encoding='utf8') as f:
+with io.open(create_path('invalid_urls.txt'), encoding='utf8') as f:
     for url in f:
         TEST_DATA.append((URLValidator(), url.strip(), ValidationError))
 
@@ -345,22 +319,21 @@ def create_simple_test_method(validator, expected, value, num):
 class TestSimpleValidators(SimpleTestCase):
     def test_single_message(self):
         v = ValidationError('Not Valid')
-        self.assertEqual(str(v), "['Not Valid']")
-        self.assertEqual(repr(v), "ValidationError(['Not Valid'])")
+        self.assertEqual(str(v), str_prefix("[%(_)s'Not Valid']"))
+        self.assertEqual(repr(v), str_prefix("ValidationError([%(_)s'Not Valid'])"))
 
     def test_message_list(self):
         v = ValidationError(['First Problem', 'Second Problem'])
-        self.assertEqual(str(v), "['First Problem', 'Second Problem']")
-        self.assertEqual(repr(v), "ValidationError(['First Problem', 'Second Problem'])")
+        self.assertEqual(str(v), str_prefix("[%(_)s'First Problem', %(_)s'Second Problem']"))
+        self.assertEqual(repr(v), str_prefix("ValidationError([%(_)s'First Problem', %(_)s'Second Problem'])"))
 
     def test_message_dict(self):
         v = ValidationError({'first': ['First Problem']})
-        self.assertEqual(str(v), "{'first': ['First Problem']}")
-        self.assertEqual(repr(v), "ValidationError({'first': ['First Problem']})")
+        self.assertEqual(str(v), str_prefix("{%(_)s'first': [%(_)s'First Problem']}"))
+        self.assertEqual(repr(v), str_prefix("ValidationError({%(_)s'first': [%(_)s'First Problem']})"))
 
     def test_regex_validator_flags(self):
-        msg = 'If the flags are set, regex must be a regular expression string.'
-        with self.assertRaisesMessage(TypeError, msg):
+        with self.assertRaises(TypeError):
             RegexValidator(re.compile('a'), flags=re.IGNORECASE)
 
     def test_max_length_validator_message(self):
@@ -486,14 +459,6 @@ class TestValidatorEquality(TestCase):
             FileExtensionValidator(['txt'])
         )
         self.assertEqual(
-            FileExtensionValidator(['TXT']),
-            FileExtensionValidator(['txt'])
-        )
-        self.assertEqual(
-            FileExtensionValidator(['TXT', 'png']),
-            FileExtensionValidator(['txt', 'png'])
-        )
-        self.assertEqual(
             FileExtensionValidator(['txt']),
             FileExtensionValidator(['txt'], code='invalid_extension')
         )
@@ -512,22 +477,4 @@ class TestValidatorEquality(TestCase):
         self.assertNotEqual(
             FileExtensionValidator(['txt']),
             FileExtensionValidator(['txt'], message='custom error message')
-        )
-
-    def test_prohibit_null_characters_validator_equality(self):
-        self.assertEqual(
-            ProhibitNullCharactersValidator(message='message', code='code'),
-            ProhibitNullCharactersValidator(message='message', code='code')
-        )
-        self.assertEqual(
-            ProhibitNullCharactersValidator(),
-            ProhibitNullCharactersValidator()
-        )
-        self.assertNotEqual(
-            ProhibitNullCharactersValidator(message='message1', code='code'),
-            ProhibitNullCharactersValidator(message='message2', code='code')
-        )
-        self.assertNotEqual(
-            ProhibitNullCharactersValidator(message='message', code='code1'),
-            ProhibitNullCharactersValidator(message='message', code='code2')
         )

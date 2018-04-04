@@ -8,7 +8,7 @@ from .fields import (
 )
 
 
-class Tag:
+class Tag(object):
     def __init__(self, tag_id):
         self.tag_id = tag_id
 
@@ -18,7 +18,7 @@ class Tag:
 
 class TagField(models.SmallIntegerField):
 
-    def from_db_value(self, value, expression, connection):
+    def from_db_value(self, value, expression, connection, context):
         if value is None:
             return value
         return Tag(int(value))
@@ -41,7 +41,7 @@ class PostgreSQLModel(models.Model):
 
 
 class IntegerArrayModel(PostgreSQLModel):
-    field = ArrayField(models.IntegerField(), default=list, blank=True)
+    field = ArrayField(models.IntegerField(), default=[], blank=True)
 
 
 class NullableIntegerArrayModel(PostgreSQLModel):
@@ -71,7 +71,6 @@ class OtherTypesArrayModel(PostgreSQLModel):
 
 class HStoreModel(PostgreSQLModel):
     field = HStoreField(blank=True, null=True)
-    array_field = ArrayField(HStoreField(), null=True)
 
 
 class CharFieldModel(models.Model):
@@ -140,14 +139,17 @@ class RangeLookupsModel(PostgreSQLModel):
     date = models.DateField(blank=True, null=True)
 
 
-class JSONModel(PostgreSQLModel):
+class JSONModel(models.Model):
     field = JSONField(blank=True, null=True)
     field_custom = JSONField(blank=True, null=True, encoder=DjangoJSONEncoder)
+
+    class Meta:
+        required_db_features = ['has_jsonb_datatype']
 
 
 class ArrayFieldSubclass(ArrayField):
     def __init__(self, *args, **kwargs):
-        super().__init__(models.IntegerField())
+        super(ArrayFieldSubclass, self).__init__(models.IntegerField())
 
 
 class AggregateTestModel(models.Model):
@@ -156,7 +158,7 @@ class AggregateTestModel(models.Model):
     """
     char_field = models.CharField(max_length=30, blank=True)
     integer_field = models.IntegerField(null=True)
-    boolean_field = models.BooleanField(null=True)
+    boolean_field = models.NullBooleanField()
 
 
 class StatTestModel(models.Model):
@@ -170,7 +172,3 @@ class StatTestModel(models.Model):
 
 class NowTestModel(models.Model):
     when = models.DateTimeField(null=True, default=None)
-
-
-class UUIDTestModel(models.Model):
-    uuid = models.UUIDField(default=None, null=True)

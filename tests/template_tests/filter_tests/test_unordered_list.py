@@ -1,7 +1,7 @@
 from django.template.defaultfilters import unordered_list
 from django.test import SimpleTestCase
+from django.utils.encoding import python_2_unicode_compatible
 from django.utils.safestring import mark_safe
-from django.utils.translation import gettext_lazy
 
 from ..utils import setup
 
@@ -38,12 +38,6 @@ class FunctionTests(SimpleTestCase):
 
     def test_list(self):
         self.assertEqual(unordered_list(['item 1', 'item 2']), '\t<li>item 1</li>\n\t<li>item 2</li>')
-
-    def test_list_gettext(self):
-        self.assertEqual(
-            unordered_list(['item 1', gettext_lazy('item 2')]),
-            '\t<li>item 1</li>\n\t<li>item 2</li>'
-        )
 
     def test_nested(self):
         self.assertEqual(
@@ -94,7 +88,8 @@ class FunctionTests(SimpleTestCase):
         )
 
     def test_ulitem(self):
-        class ULItem:
+        @python_2_unicode_compatible
+        class ULItem(object):
             def __init__(self, title):
                 self.title = title
 
@@ -110,29 +105,18 @@ class FunctionTests(SimpleTestCase):
         )
 
         def item_generator():
-            yield from (a, b, c)
+            yield a
+            yield b
+            yield c
 
         self.assertEqual(
             unordered_list(item_generator()),
             '\t<li>ulitem-a</li>\n\t<li>ulitem-b</li>\n\t<li>ulitem-&lt;a&gt;c&lt;/a&gt;</li>',
         )
 
-    def test_nested_generators(self):
-        def inner_generator():
-            yield from ('B', 'C')
-
-        def item_generator():
-            yield 'A'
-            yield inner_generator()
-            yield 'D'
-
-        self.assertEqual(
-            unordered_list(item_generator()),
-            '\t<li>A\n\t<ul>\n\t\t<li>B</li>\n\t\t<li>C</li>\n\t</ul>\n\t</li>\n\t<li>D</li>',
-        )
-
     def test_ulitem_autoescape_off(self):
-        class ULItem:
+        @python_2_unicode_compatible
+        class ULItem(object):
             def __init__(self, title):
                 self.title = title
 
@@ -148,7 +132,9 @@ class FunctionTests(SimpleTestCase):
         )
 
         def item_generator():
-            yield from (a, b, c)
+            yield a
+            yield b
+            yield c
 
         self.assertEqual(
             unordered_list(item_generator(), autoescape=False),

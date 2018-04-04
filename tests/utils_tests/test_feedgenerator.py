@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import datetime
 import unittest
 
@@ -119,17 +121,6 @@ class FeedgeneratorTest(unittest.TestCase):
         self.assertIn('<atom:link', feed_content)
         self.assertIn('href="/feed/"', feed_content)
         self.assertIn('rel="self"', feed_content)
-
-    def test_atom_add_item(self):
-        # Not providing any optional arguments to Atom1Feed.add_item()
-        feed = feedgenerator.Atom1Feed('title', '/link/', 'descr')
-        feed.add_item('item_title', 'item_link', 'item_description')
-        feed.writeString('utf-8')
-
-    def test_deterministic_attribute_order(self):
-        feed = feedgenerator.Atom1Feed('title', '/link/', 'desc')
-        feed_content = feed.writeString('utf-8')
-        self.assertIn('href="/link/" rel="alternate"', feed_content)
 
 
 class FeedgeneratorDBTest(TestCase):

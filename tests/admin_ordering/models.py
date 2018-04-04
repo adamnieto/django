@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from django.contrib import admin
 from django.db import models
 
@@ -27,7 +28,7 @@ class SongInlineDefaultOrdering(admin.StackedInline):
 
 class SongInlineNewOrdering(admin.StackedInline):
     model = Song
-    ordering = ('duration',)
+    ordering = ('duration', )
 
 
 class DynOrderingBandAdmin(admin.ModelAdmin):

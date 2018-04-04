@@ -1,6 +1,10 @@
+from __future__ import unicode_literals
+
 import os.path
 
-TEST_ROOT = os.path.dirname(__file__)
+from django.utils._os import upath
+
+TEST_ROOT = os.path.dirname(upath(__file__))
 
 TEST_SETTINGS = {
     'MEDIA_URL': '/media/',

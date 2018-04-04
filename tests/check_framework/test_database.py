@@ -1,15 +1,12 @@
 import unittest
-from unittest import mock
 
 from django.core.checks import Tags, run_checks
 from django.core.checks.registry import CheckRegistry
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, mock
 
 
 class DatabaseCheckTests(TestCase):
-    multi_db = True
-
     @property
     def func(self):
         from django.core.checks.database import check_database_backends

@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from django.template import TemplateSyntaxError
 from django.test import SimpleTestCase
 from django.utils.formats import date_format
 
@@ -60,8 +59,3 @@ class NowTagTests(SimpleTestCase):
         self.assertEqual(output, '-%d %d %d-' % (
             datetime.now().day, datetime.now().month, datetime.now().year,
         ))
-
-    @setup({'no_args': '{% now %}'})
-    def test_now_args(self):
-        with self.assertRaisesMessage(TemplateSyntaxError, "'now' statement takes one argument"):
-            self.engine.render_to_string('no_args')

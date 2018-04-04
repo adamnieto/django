@@ -2,6 +2,7 @@ from unittest import TestCase
 
 from django.template import Context, Engine
 from django.template.base import TextNode, VariableNode
+from django.utils import six
 
 
 class NodelistTest(TestCase):
@@ -9,7 +10,7 @@ class NodelistTest(TestCase):
     @classmethod
     def setUpClass(cls):
         cls.engine = Engine()
-        super().setUpClass()
+        super(NodelistTest, cls).setUpClass()
 
     def test_for(self):
         template = self.engine.from_string('{% for i in 1 %}{{ a }}{% endfor %}')
@@ -37,11 +38,13 @@ class TextNodeTest(TestCase):
     def test_textnode_repr(self):
         engine = Engine()
         for temptext, reprtext in [
-            ("Hello, world!", "<TextNode: 'Hello, world!'>"),
-            ("One\ntwo.", "<TextNode: 'One\\ntwo.'>"),
+            ("Hello, world!", "<TextNode: u'Hello, world!'>"),
+            ("One\ntwo.", "<TextNode: u'One\\ntwo.'>"),
         ]:
             template = engine.from_string(temptext)
             texts = template.nodelist.get_nodes_by_type(TextNode)
+            if six.PY3:
+                reprtext = reprtext.replace("u'", "'")
             self.assertEqual(repr(texts[0]), reprtext)
 
 

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django.apps import AppConfig
 
 
@@ -16,7 +18,7 @@ class BadConfig(AppConfig):
     """This class doesn't supply the mandatory 'name' attribute."""
 
 
-class NotAConfig:
+class NotAConfig(object):
     name = 'apps'
 
 

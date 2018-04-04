@@ -1,5 +1,8 @@
+from __future__ import unicode_literals
+
 from django.db import IntegrityError, connection, transaction
-from django.test import TestCase
+from django.test import TestCase, ignore_warnings
+from django.utils.deprecation import RemovedInDjango20Warning
 
 from .models import (
     Bar, Director, Favorites, HiddenPointer, ManualPrimaryKey, MultiModel,
@@ -162,7 +165,7 @@ class OneToOneTests(TestCase):
 
     def test_create_models_m2m(self):
         """
-        Models are created via the m2m relation if the remote model has a
+        Modles are created via the m2m relation if the remote model has a
         OneToOneField (#1064, #1506).
         """
         f = Favorites(name='Fred')
@@ -196,15 +199,6 @@ class OneToOneTests(TestCase):
         # UndergroundBar.
         p.undergroundbar = None
 
-    def test_assign_none_to_null_cached_reverse_relation(self):
-        p = Place.objects.get(name='Demon Dogs')
-        # Prime the relation's cache with a value of None.
-        with self.assertRaises(Place.undergroundbar.RelatedObjectDoesNotExist):
-            getattr(p, 'undergroundbar')
-        # Assigning None works if there isn't a related UndergroundBar and the
-        # reverse cache has a value of None.
-        p.undergroundbar = None
-
     def test_related_object_cache(self):
         """ Regression test for #6886 (the related-object cache) """
 
@@ -216,7 +210,7 @@ class OneToOneTests(TestCase):
         self.assertIs(p.restaurant, r)
 
         # But if we kill the cache, we get a new object
-        del p._state.fields_cache['restaurant']
+        del p._restaurant_cache
         self.assertIsNot(p.restaurant, r)
 
         # Reassigning the Restaurant object results in an immediate cache update
@@ -235,11 +229,7 @@ class OneToOneTests(TestCase):
         setattr(p, 'restaurant', None)
 
         # You also can't assign an object of the wrong type here
-        msg = (
-            'Cannot assign "<Place: Demon Dogs the place>": '
-            '"Place.restaurant" must be a "Restaurant" instance.'
-        )
-        with self.assertRaisesMessage(ValueError, msg):
+        with self.assertRaises(ValueError):
             setattr(p, 'restaurant', p)
 
         # Creation using keyword argument should cache the related object.
@@ -267,11 +257,24 @@ class OneToOneTests(TestCase):
         misbehaving. We test both (primary_key=True & False) cases here to
         prevent any reappearance of the problem.
         """
-        target = Target.objects.create()
-        self.assertSequenceEqual(Target.objects.filter(pointer=None), [target])
-        self.assertSequenceEqual(Target.objects.exclude(pointer=None), [])
-        self.assertSequenceEqual(Target.objects.filter(second_pointer=None), [target])
-        self.assertSequenceEqual(Target.objects.exclude(second_pointer=None), [])
+        Target.objects.create()
+
+        self.assertQuerysetEqual(
+            Target.objects.filter(pointer=None),
+            ['<Target: Target object>']
+        )
+        self.assertQuerysetEqual(
+            Target.objects.exclude(pointer=None),
+            []
+        )
+        self.assertQuerysetEqual(
+            Target.objects.filter(second_pointer=None),
+            ['<Target: Target object>']
+        )
+        self.assertQuerysetEqual(
+            Target.objects.exclude(second_pointer=None),
+            []
+        )
 
     def test_o2o_primary_key_delete(self):
         t = Target.objects.create(name='name')
@@ -416,6 +419,7 @@ class OneToOneTests(TestCase):
             hasattr(Target, HiddenPointer._meta.get_field('target').remote_field.get_accessor_name())
         )
 
+    @ignore_warnings(category=RemovedInDjango20Warning)  # for use_for_related_fields deprecation
     def test_related_object(self):
         public_school = School.objects.create(is_public=True)
         public_director = Director.objects.create(school=public_school, is_temp=False)
@@ -424,10 +428,16 @@ class OneToOneTests(TestCase):
         private_director = Director.objects.create(school=private_school, is_temp=True)
 
         # Only one school is available via all() due to the custom default manager.
-        self.assertSequenceEqual(School.objects.all(), [public_school])
+        self.assertQuerysetEqual(
+            School.objects.all(),
+            ["<School: School object>"]
+        )
 
         # Only one director is available via all() due to the custom default manager.
-        self.assertSequenceEqual(Director.objects.all(), [public_director])
+        self.assertQuerysetEqual(
+            Director.objects.all(),
+            ["<Director: Director object>"]
+        )
 
         self.assertEqual(public_director.school, public_school)
         self.assertEqual(public_school.director, public_director)
@@ -441,6 +451,25 @@ class OneToOneTests(TestCase):
         # its related school even if the default manager doesn't normally
         # allow it.
         self.assertEqual(private_school.director, private_director)
+
+        # If the manager is marked "use_for_related_fields", it'll get used instead
+        # of the "bare" queryset. Usually you'd define this as a property on the class,
+        # but this approximates that in a way that's easier in tests.
+        School._default_manager.use_for_related_fields = True
+        try:
+            private_director = Director._base_manager.get(pk=private_director.pk)
+            with self.assertRaises(School.DoesNotExist):
+                private_director.school
+        finally:
+            School._default_manager.use_for_related_fields = False
+
+        Director._default_manager.use_for_related_fields = True
+        try:
+            private_school = School._base_manager.get(pk=private_school.pk)
+            with self.assertRaises(Director.DoesNotExist):
+                private_school.director
+        finally:
+            Director._default_manager.use_for_related_fields = False
 
         School._meta.base_manager_name = 'objects'
         School._meta._expire_cache()
@@ -507,13 +536,3 @@ class OneToOneTests(TestCase):
         pointer = ToFieldPointer.objects.create(target=target)
         self.assertSequenceEqual(ToFieldPointer.objects.filter(target=target), [pointer])
         self.assertSequenceEqual(ToFieldPointer.objects.filter(pk__exact=pointer), [pointer])
-
-    def test_cached_relation_invalidated_on_save(self):
-        """
-        Model.save() invalidates stale OneToOneField relations after a primary
-        key assignment.
-        """
-        self.assertEqual(self.b1.place, self.p1)  # caches b1.place
-        self.b1.place_id = self.p2.pk
-        self.b1.save()
-        self.assertEqual(self.b1.place, self.p2)

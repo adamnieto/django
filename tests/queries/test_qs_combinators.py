@@ -1,6 +1,9 @@
+from __future__ import unicode_literals
+
 from django.db.models import F, IntegerField, Value
-from django.db.utils import DatabaseError, NotSupportedError
+from django.db.utils import DatabaseError
 from django.test import TestCase, skipIfDBFeature, skipUnlessDBFeature
+from django.utils.six.moves import range
 
 from .models import Number, ReservedName
 
@@ -100,6 +103,12 @@ class QuerySetSetOperationTests(TestCase):
         self.assertEqual(len(qs2.union(qs2)), 0)
         self.assertEqual(len(qs3.union(qs3)), 0)
 
+    def test_union_bad_kwarg(self):
+        qs1 = Number.objects.all()
+        msg = "union() received an unexpected keyword argument 'bad'"
+        with self.assertRaisesMessage(TypeError, msg):
+            self.assertEqual(len(list(qs1.union(qs1, bad=True))), 20)
+
     def test_limits(self):
         qs1 = Number.objects.all()
         qs2 = Number.objects.all()
@@ -118,17 +127,6 @@ class QuerySetSetOperationTests(TestCase):
         self.assertEqual(reserved_name['order'], 2)
         reserved_name = qs1.union(qs1).values_list('name', 'order', 'id').get()
         self.assertEqual(reserved_name[:2], ('a', 2))
-
-    def test_union_with_two_annotated_values_list(self):
-        qs1 = Number.objects.filter(num=1).annotate(
-            count=Value(0, IntegerField()),
-        ).values_list('num', 'count')
-        qs2 = Number.objects.filter(num=2).values('pk').annotate(
-            count=F('num'),
-        ).annotate(
-            num=Value(1, IntegerField()),
-        ).values_list('num', 'count')
-        self.assertCountEqual(qs1.union(qs2), [(1, 0), (2, 1)])
 
     def test_count_union(self):
         qs1 = Number.objects.filter(num__lte=1).values('num')
@@ -172,8 +170,8 @@ class QuerySetSetOperationTests(TestCase):
     def test_unsupported_intersection_raises_db_error(self):
         qs1 = Number.objects.all()
         qs2 = Number.objects.all()
-        msg = 'intersection is not supported on this database backend'
-        with self.assertRaisesMessage(NotSupportedError, msg):
+        msg = 'intersection not supported on this database backend'
+        with self.assertRaisesMessage(DatabaseError, msg):
             list(qs1.intersection(qs2))
 
     def test_combining_multiple_models(self):
