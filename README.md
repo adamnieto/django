@@ -8,3 +8,13 @@ Take a look at the the following files to see the new additions and changes:
 
 ## XSSDetector
 This class is provided with absolute paths of templates from the Django app and will check templates (html files) that contain variables that are not escaped. If it finds unescaped variables it will warn the user from the console by providing a warning with the location and template name.
+
+## Installation
+To install this package from github simply use one of the following commands:
+```
+pip install git+https://github.com/adamnieto/django-xss-detector
+```
+or 
+```
+pip install git+git://github.com/adamnieto/django-xss-detector
+```
