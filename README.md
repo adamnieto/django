@@ -12,7 +12,16 @@ Take a look at the the following files to see the new additions and changes:
 2. `django/core/management/commands/runserver.py`
 
 ## XSSDetector
-This class is provided with absolute paths of templates from the Django app and will check templates (html files) that contain variables that are not escaped. If it finds unescaped variables it will warn the user from the console by providing a warning with the location and template name.
+This class is provided with absolute paths of templates from the Django app and will check templates (html files) that contain variables that are not escaped. If it finds unescaped variables it will warn the user from the console by providing a warning with the location of the vulnerability along with the template name.
+
+Example:
+
+```
+WARNING: Your application may be at risk to an XSS attack.
+In template, "hello.html", line 50 the autoescape was off.
+{% autoescape off %}
+^
+```
 
 ## Installation
 To install this package from github simply use one of the following commands:
