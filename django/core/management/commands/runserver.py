@@ -117,7 +117,7 @@ class Command(BaseCommand):
         num_errors = xssdetector.getNumErrors()
         messages = xssdetector.getErrorMessages()
         if num_errors > 0:
-            self.stdout.write("XSS Vulnerabilities Found:\n\n")
+            self.stdout.write(str(num_errors) + " XSS vulnerabilities found\n\n")
             self.stdout.write(messages)
         else:
             self.stdout.write("No XSS threats detected.")
@@ -145,7 +145,7 @@ class Command(BaseCommand):
         shutdown_message = options.get('shutdown_message', '')
         quit_command = 'CTRL-BREAK' if sys.platform == 'win32' else 'CONTROL-C'
 
-        self.stdout.write("Performing system checks...\n\n")
+        self.stdout.write("Performing system checks...\n")
         self.stdout.write("Performing xss vulnerability checks...\n\n")
         self.check_xss_vulnerabilities()
         self.check(display_num_errors=True)
