@@ -117,8 +117,11 @@ class Command(BaseCommand):
         num_errors = xssdetector.getNumErrors()
         messages = xssdetector.getErrorMessages()
         if num_errors > 0:
-            self.stdout.write("XSS Vulnerability Detection:\n\n")
+            self.stdout.write("XSS Vulnerabilities Found:\n\n")
             self.stdout.write(messages)
+        else:
+            self.stdout.write("No XSS threats detected.")
+
 # ==============================================================================
 
     def run(self, **options):
@@ -143,6 +146,7 @@ class Command(BaseCommand):
         quit_command = 'CTRL-BREAK' if sys.platform == 'win32' else 'CONTROL-C'
 
         self.stdout.write("Performing system checks...\n\n")
+        self.stdout.write("Performing xss vulnerability checks...\n\n")
         self.check_xss_vulnerabilities()
         self.check(display_num_errors=True)
         # Need to check migrations here, so can't use the
