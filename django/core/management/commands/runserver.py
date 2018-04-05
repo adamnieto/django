@@ -61,8 +61,8 @@ class Command(BaseCommand):
         #=======================================================================
         # Added by Adam Nieto
         parser.add_argument(
-            '--surpress-xss-warnings', action='store_true',
-            help="Surpresses XSS Warnings",
+            '--silence-xss-warnings', action='store_true',
+            help="Silences XSS warnings that come from the XSS detector during checks.",
         )
         #=======================================================================
 
