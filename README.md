@@ -3,7 +3,7 @@
 Created by Adam Nieto
 
 ## Summary
-Although django does an amazing job at autoescaping variables in templates, it is still possible to have an XSS attack by making silly mistakes. These mistakes can occur when one uses tag filters that intentionally turn off autoescaping. The intention of this version of django is to create a django web framework that provides warnings of possible XSS vulnerabilities by looking for tag filters that turn autoescaping off. The inspiration for this version of django was to bring attention to possible areas in the template that may be vulnerable to attack. Note that this version of django is extra cautious, however, you are given the option to suppress and silence warnings.
+Although django does an amazing job at autoescaping variables in templates, it is still possible to have an XSS attack by making silly mistakes. These mistakes can occur when one uses tag filters that intentionally turn off autoescaping. The intention of this version of django is to create a django web framework that provides warnings of possible XSS vulnerabilities by looking for tag filters that turn autoescaping off. Note that this version of django is intentionally extra cautious, however, you are given the option to suppress and silence warnings.
 
 ---
 ## Purpose
