@@ -8,7 +8,7 @@ class XSSDetector:
     line_num = 0
     error_counter = 0
     # Dictionary for lines that are surpressed
-    surpressions = {} # key:"template_name,line_num"; value: True
+    suppresions = {} # key:"template_name,line_num"; value: True
     error_message = ""
     vulnerabilities = ["{%autoescapeoff%}",
                        "{%endautoescape%}",
@@ -29,11 +29,11 @@ class XSSDetector:
     "the safeseq filter was used (autoescape is off).",
     "the safe filter was applied to a striptags filter (unsafe)."]
 
-    def __init__(self, template_paths,surpression_path):
+    def __init__(self, template_paths,suppresion_path):
         for path in template_paths:
             self.template_name = os.path.split(path)[-1]
             self.template_obj = open(path,"r")
-            self.addSurpressions(surpression_path)
+            self.addsuppresions(suppresion_path)
             self.iterateLines()
 
     def getErrorMessages(self):
@@ -61,19 +61,19 @@ class XSSDetector:
                 self.makeArrow(index)
         return result
 
-    def addSurpressions(self,surpression_path):
-        surpression_file = open(surpression_path, "r")
+    def addsuppresions(self,suppresion_path):
+        suppresion_file = open(suppresion_path, "r")
         counter = 0
-        for line in surpression_file:
+        for line in suppresion_file:
             counter += 1
-            if counter > 3:
+            if counter > 4:
                 key = line.strip()
-                self.surpressions[key] = True
+                self.suppresions[key] = True
 
 
     def isSurpressed(self):
         key = self.template_name + "," + str(self.line_num)
-        if self.surpressions.get(key,-1) != -1:
+        if self.suppresions.get(key,-1) != -1:
             return True
         else:
             return False
@@ -81,7 +81,7 @@ class XSSDetector:
     def checkVulnerabilities(self, line):
         for i in range(len(self.vulnerabilities)):
             if self.vulnerabilities[i] in line.replace(" ", ""):
-                # Check if in surpressions
+                # Check if in suppresions
                 if not self.isSurpressed():
                     self.error_counter += 1
                     index = line.lstrip().find(self.vulnerabilities[i])
