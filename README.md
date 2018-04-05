@@ -22,15 +22,15 @@ In template, "hello.html", line 50 the autoescape was off.
 ---
 
 ## django Additions
-This version of django adds XSS detection capabilities to django version 1.11.9. It performs XSS vulnerability checks for common template tags that when used incorrectly can be vulnerable to attack.
+This version of django adds XSS detection capabilities to django version 1.11.9. It performs XSS vulnerability checks for builtin template tags that when used incorrectly can be vulnerable to attack.
 
-Take a look at the the following files to see the new additions:
+Take a look at the following files to see the new additions:
 
 1. `django/middleware/XSSDetector.py`
 2. `django/core/management/commands/runserver.py`
 
 ---
-## Resolve Warnings
+## Resolving Warnings
 ### Silence Warnings
 Automatically warnings are printed to the console if a vulnerability is detected in any user created template. To silence the warnings you can use the `--silence-xss-warnings` argument when running the server as depicted below: 
 
@@ -39,7 +39,7 @@ python3 manage.py runserver --silence-xss-warnings
 ```
 
 ### Surpress Warnings
-A file called `xss_supressions.txt` is created in the same directory as `manage.py` the first time the server is run. This file can be used to tell django to ignore certain lines in templates that may be producing warnings. This is different from silencing warnings. Adding a suppression makes the XSSDetector to ignore possible vulnerabilities for the suppressed line given.
+A file called `xss_suppressions.txt` is created in the same directory as `manage.py` the first time the server is run. This file can be used to tell django to ignore certain lines in templates that may be producing warnings. This is different from silencing warnings. Adding a suppression makes the XSSDetector ignore possible vulnerabilities for the suppressed line given.
 
 Please use the following format when adding suppressions (start on the 5th line):
 
@@ -53,7 +53,7 @@ home.html,23
 ```
 ---
 ## Installation
-To install this package from github simply use one of the following commands:
+To install this package from GitHub simply use one of the following commands with pip:
 ```
 pip install git+https://github.com/adamnieto/django-xss-detector
 ```
