@@ -142,7 +142,7 @@ class Command(BaseCommand):
             else:
                 self.stdout.write("Potential XSS vulnerabilities were found (%s silenced).\n" % str(num_errors))
         else:
-            self.stdout.write("No XSS threats detected. (0 silenced)")
+            self.stdout.write("No XSS threats detected (0 silenced).")
 
 # ==============================================================================
 
