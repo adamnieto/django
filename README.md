@@ -32,7 +32,7 @@ Take a look at the the following files to see the new additions:
 ---
 ## Resolve Warnings
 ### Silence Warnings
-Automatically warnings are printed to the console if a vulnerability is detected in any user created template. To suppress the warnings you can use the `--silence-xss-warnings` argument when running the server as depicted below: 
+Automatically warnings are printed to the console if a vulnerability is detected in any user created template. To silence the warnings you can use the `--silence-xss-warnings` argument when running the server as depicted below: 
 
 ```
 python3 manage.py runserver --silence-xss-warnings
