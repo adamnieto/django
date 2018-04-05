@@ -58,6 +58,13 @@ class Command(BaseCommand):
             '--noreload', action='store_false', dest='use_reloader', default=True,
             help='Tells Django to NOT use the auto-reloader.',
         )
+        #=======================================================================
+        # Added by Adam Nieto
+        parser.add_argument(
+            '--surpress-xss-warnings', action='store_true',
+            help="Surpresses XSS Warnings",
+        )
+        #=======================================================================
 
     def execute(self, *args, **options):
         if options['no_color']:
@@ -107,20 +114,33 @@ class Command(BaseCommand):
         self.run(**options)
 # ==============================================================================
     # Added by Adam Nieto
-    def check_xss_vulnerabilities(self):
+    def create_surpression_file(self,surpression_file_path):
+        self.stdout.write("No xss surpression file found.\n")
+        self.stdout.write("Created a surpression file in manage.py directory.\n")
+        file_obj = open(surpression_file_path,"w")
+        file_obj.write("#Format: template_name,line_num\n#Example: django.html,50")
+        file_obj.close()
+
+    def check_surpression_file_exists(self,surpression_file_path):
+        return os.path.exists(surpression_file_path)
+
+    def check_xss_vulnerabilities(self, xss_warnings_are_surpressed,surpression_path):
         engine_obj = engine_loader._engine_list()[0]
         template_loader = template_dir_loader.Loader(engine_obj)
         template_directories = template_loader.get_dirs()
         user_template_directory = template_directories[0]
         template_paths = glob.glob(os.path.join(user_template_directory,"*.html"))
-        xssdetector = XSSDetector(template_paths)
+        xssdetector = XSSDetector(template_paths,surpression_path)
         num_errors = xssdetector.getNumErrors()
         messages = xssdetector.getErrorMessages()
         if num_errors > 0:
-            self.stdout.write(str(num_errors) + " XSS vulnerabilities found\n\n")
-            self.stdout.write(messages)
+            if not xss_warnings_are_surpressed:
+                self.stdout.write(str(num_errors) + " potential XSS vulnerabilities were found:\n")
+                self.stdout.write(messages)
+            else:
+                self.stdout.write("Potential XSS vulnerabilities were found (%s silenced).\n" % str(num_errors))
         else:
-            self.stdout.write("No XSS threats detected.")
+            self.stdout.write("No XSS threats detected. (0 silenced)")
 
 # ==============================================================================
 
@@ -146,8 +166,19 @@ class Command(BaseCommand):
         quit_command = 'CTRL-BREAK' if sys.platform == 'win32' else 'CONTROL-C'
 
         self.stdout.write("Performing system checks...\n")
+        #=======================================================================
+        # Added by Adam Nieto
+        # Gathering xss surpression file path
+        user_current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
+        surpression_file_path = os.path.join(user_current_directory,
+                                             "xss_surpressions.txt")
+        # Checking if xss surpression file should be created
+        if not self.check_surpression_file_exists(surpression_file_path):
+            self.create_surpression_file(surpression_file_path)
         self.stdout.write("Performing xss vulnerability checks...\n\n")
-        self.check_xss_vulnerabilities()
+        xss_warnings_are_surpressed = options["surpress_xss_warnings"]
+        self.check_xss_vulnerabilities(xss_warnings_are_surpressed,surpression_file_path)
+        #=======================================================================
         self.check(display_num_errors=True)
         # Need to check migrations here, so can't use the
         # requires_migrations_check attribute.
