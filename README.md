@@ -37,7 +37,7 @@ python3 manage.py runserver --silence-xss-warnings
 ```
 
 ## Surpress Warnings
-A file called `xss_supressions.txt` is created in the same directory as `manage.py` the first time the server is run. This file can be used to tell Django to ignore certain lines in templates that may be producing warnings. This is different from silencing warnings. Adding a suppression makes the XSSDetector not check for possible vulnerabilities for the suppressed line given.
+A file called `xss_supressions.txt` is created in the same directory as `manage.py` the first time the server is run. This file can be used to tell Django to ignore certain lines in templates that may be producing warnings. This is different from silencing warnings. Adding a suppression makes the XSSDetector to ignore possible vulnerabilities for the suppressed line given.
 
 Please use the following format when adding suppressions (start on the 5th line):
 
