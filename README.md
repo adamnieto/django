@@ -23,6 +23,16 @@ In template, "hello.html", line 50 the autoescape was off.
 ^
 ```
 
+## Usage
+
+
+### Silence Warnings
+Automatically warnings are printed to the console if a vulnerability is detected any created template. To surpress the warnings you can use the `--silence-xss-warnings` argument when running the server as depicted below: 
+
+```
+python3 manage.py runserver --silence-xss-warnings
+```
+
 ## Installation
 To install this package from github simply use one of the following commands:
 ```
