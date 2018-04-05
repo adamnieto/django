@@ -7,7 +7,9 @@ Although django does an amazing job at autoescaping variables in templates, it i
 
 ---
 ## Purpose
-To check templates (html files) that contain variables that can potentially be a risk to XSS attack. If it finds potentially unescaped variables it will warn the user from the console by providing a warning with the location of the vulnerability along with the template name.
+To check templates (html files) that contain variables that can potentially be a risk to XSS attack. 
+
+If it finds potentially unescaped variables it will warn the user from the console by providing a warning with the location of the vulnerability along with the template name.
 
 Example:
 
