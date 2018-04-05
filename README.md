@@ -2,22 +2,12 @@
 ---
 Created by Adam Nieto
 
-## Motive
-Although Django does an amazing job at autoescaping variables in templates, it is still possible to have an XSS attack by making silly mistakes. These mistakes can occur when one uses tag filters that intentionally turn off autoescaping. The intention of this version of Django is to create a Django framework that provides warnings of possible XSS vulnerabilities by looking for tag filters that turn autoescaping off. The inspiration for this version of django was to bring attention to possible areas in the template that may be vulnerable to attack. Note that this version of Django is extra cautious, however, you are given the option to suppress warnings.
+## Summary
+Although Django does an amazing job at autoescaping variables in templates, it is still possible to have an XSS attack by making silly mistakes. These mistakes can occur when one uses tag filters that intentionally turn off autoescaping. The intention of this version of Django is to create a Django framework that provides warnings of possible XSS vulnerabilities by looking for tag filters that turn autoescaping off. The inspiration for this version of django was to bring attention to possible areas in the template that may be vulnerable to attack. Note that this version of Django is extra cautious, however, you are given the option to suppress and silence warnings.
 
 ---
-
-## Changes
-This version of Django adds XSS detection capabilities to Django version 1.11.9. It performs XSS vulnerability checks for common template tags that when used incorrectly can be vulnerable to attack.
-
-Take a look at the the following files to see the new additions:
-
-1. `django/middleware/XSSDetector.py`
-2. `django/core/management/commands/runserver.py`
-
----
-## XSSDetector
-This class will check templates (html files) that contain variables that can potentially by a risk to XSS attack. If it finds possibly unescaped variables it will warn the user from the console by providing a warning with the location of the vulnerability along with the template name.
+## Purpose
+To check templates (html files) that contain variables that can potentially be a risk to XSS attack. If it finds potentially unescaped variables it will warn the user from the console by providing a warning with the location of the vulnerability along with the template name.
 
 Example:
 
@@ -28,7 +18,17 @@ In template, "hello.html", line 50 the autoescape was off.
 ^
 ```
 ---
-## Usage
+
+## Django Additions
+This version of Django adds XSS detection capabilities to Django version 1.11.9. It performs XSS vulnerability checks for common template tags that when used incorrectly can be vulnerable to attack.
+
+Take a look at the the following files to see the new additions:
+
+1. `django/middleware/XSSDetector.py`
+2. `django/core/management/commands/runserver.py`
+
+---
+## Resolve Warnings
 ### Silence Warnings
 Automatically warnings are printed to the console if a vulnerability is detected in any user created template. To suppress the warnings you can use the `--silence-xss-warnings` argument when running the server as depicted below: 
 
