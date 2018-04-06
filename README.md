@@ -32,7 +32,7 @@ Take a look at the following files to see the new additions:
 2. `django/core/management/commands/runserver.py`
 
 ---
-## Resolving Warnings
+## Features
 ### Silence Warnings
 Automatically warnings are printed to the console if a vulnerability is detected in any user created template. To silence the warnings you can use the `--silence-xss-warnings` argument when running the server as depicted below: 
 
@@ -46,12 +46,24 @@ A file called `xss_suppressions.txt` is created in the same directory as `manage
 Please use the following format when adding suppressions (start on the 6th line):
 
 ```
-template_name,line_num
+<template_name>,<line_num>
 ```
 
 Example:
 ```
 home.html,23
+```
+### Add New Rules
+A file called `xss_rules.txt` is created in the same directory as `manage.py` the first time the server is run. This file can be used to tell django that you want to add more rules for the xss detector to identify. For instance, if a developer created a new filter or template tag that could potentially be vulnerable to XSS attack then the developer should add this rule to `xss_rules.txt` so they or others who use this filter can be warned if used incorrectly could result in an XSS attack. 
+Please use the following format when adding rules (start on the 6th line):
+
+```
+<vulnerable_filter_or_text>,<warning_message>
+```
+
+Example:
+```
+|dont_escape,Incorrect usage of the dont_escape filter could lead to a vulnerability.
 ```
 ---
 ## Installation
