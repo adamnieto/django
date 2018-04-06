@@ -63,7 +63,7 @@ Please use the following format when adding rules (start on the 6th line):
 
 Example:
 ```
-|dont_escape,incorrect usage of the dont_escape filter could lead to a vulnerability.
+|dont_escape,the incorrect usage of the dont_escape filter could lead to a vulnerability.
 ```
 ---
 ## Installation
