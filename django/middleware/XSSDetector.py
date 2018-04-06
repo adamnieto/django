@@ -66,7 +66,7 @@ class XSSDetector:
         counter = 0
         for line in suppresion_file:
             counter += 1
-            if counter > 4:
+            if counter > 5:
                 key = line.strip()
                 self.suppresions[key] = True
 

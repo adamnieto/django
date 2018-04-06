@@ -121,6 +121,7 @@ class Command(BaseCommand):
         file_obj.write("#This file is used to tell Django to ignore XSS warnings it picks up when the runserver command on manage.py is invoked.\n")
         file_obj.write("#Format: template_name,line_num\n#Example: django.html,50\n")
         file_obj.write("#Add your suppressions below:\n")
+        file_obj.write("==========================================================================================\n")
         file_obj.close()
 
     def check_suppresion_file_exists(self,suppresion_file_path):
