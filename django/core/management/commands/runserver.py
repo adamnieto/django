@@ -188,9 +188,9 @@ class Command(BaseCommand):
         # Gathering xss suppresion file path
         user_current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
         suppresion_file_path = os.path.join(user_current_directory,
-                                             "xss_suppresions.txt")
+                                             "xss_detector_suppresions.txt")
         rule_file_path = os.path.join(user_current_directory,
-                                             "xss_rules.txt")
+                                             "additional_xss_detector_rules.txt")
         # Checking if xss suppresion file should be created
         if not self.check_suppresion_file_exists(suppresion_file_path):
             self.create_suppresion_file(suppresion_file_path)

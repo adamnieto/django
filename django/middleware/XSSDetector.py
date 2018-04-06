@@ -100,7 +100,7 @@ class XSSDetector:
             counter += 1
             if counter > 5:
                 if ',' not in line:
-                    print("Incorrect Format: No comma in 'xss_rules.txt' on line "
+                    print("Incorrect Format: No comma in 'additional_xss_detector_rules.txt' on line "
                           + str(counter) + '.')
                     os._exit(1)
                     sys.exit()
