@@ -118,9 +118,9 @@ class Command(BaseCommand):
         self.stdout.write("No xss suppresion file found.\n")
         self.stdout.write("Created a suppresion file in manage.py directory.\n")
         file_obj = open(suppresion_file_path,"w")
-        file_obj.write("#This file is used to tell Django to ignore XSS warnings it picks up when the runserver command on manage.py is invoked.\n")
-        file_obj.write("#Format: template_name,line_num\n#Example: django.html,50\n")
-        file_obj.write("#Add your suppressions below:\n")
+        file_obj.write("This file is used to tell Django to ignore XSS warnings it picks up when the runserver command on manage.py is invoked.\n")
+        file_obj.write("Format: template_name,line_num\n#Example: django.html,50\n")
+        file_obj.write("Add your suppressions below:\n")
         file_obj.write("==========================================================================================\n")
         file_obj.close()
 
