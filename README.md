@@ -41,7 +41,7 @@ python3 manage.py runserver --silence-xss-warnings
 ```
 
 ### Surpress Warnings
-A file called `xss_suppressions.txt` is created in the same directory as `manage.py` the first time the server is run. This file can be used to tell django to ignore certain lines in templates that may be producing warnings. This is different from silencing warnings. Adding a suppression makes the XSSDetector ignore possible vulnerabilities for the suppressed line given.
+A file called `xss_suppressions.txt` is created in the same directory as `manage.py` the first time the `runserver` command is executed. This file can be used to tell django to ignore certain lines in templates that may be producing warnings. This is different from silencing warnings. Adding a suppression makes the XSSDetector ignore possible vulnerabilities for the suppressed line given.
 
 Please use the following format when adding suppressions (start on the 6th line):
 
@@ -54,7 +54,7 @@ Example:
 home.html,23
 ```
 ### Add New Rules
-A file called `xss_rules.txt` is created in the same directory as `manage.py` the first time the server is run. This file can be used to tell django that you want to add more rules for the xss detector to identify. For instance, if a developer created a new filter or template tag that could potentially be vulnerable to XSS attack then the developer should add this rule to `xss_rules.txt` so they or others who use this filter can be warned if used incorrectly could result in an XSS attack. 
+A file called `xss_rules.txt` is created in the same directory as `manage.py` the first time the `runserver` command is executed. This file can be used to tell django that you want to add more rules for the xss detector to identify. For instance, if a developer created a new filter or template tag that could potentially be vulnerable to XSS attack then the developer should add this rule to `xss_rules.txt` so they or others who use this filter can be warned if used incorrectly could result in an XSS attack. 
 Please use the following format when adding rules (start on the 6th line):
 
 ```
