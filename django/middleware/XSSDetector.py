@@ -7,7 +7,7 @@ class XSSDetector:
     template_obj = None
     line_num = 0
     error_counter = 0
-    # Dictionary for lines that are surpressed
+    # Dictionary for lines that are suppressed
     suppresions = {} # key:"template_name,line_num"; value: True
     error_message = ""
     vulnerabilities = ["{%autoescapeoff%}",
