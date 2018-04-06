@@ -114,10 +114,10 @@ class Command(BaseCommand):
         self.run(**options)
 # ==============================================================================
     # Added by Adam Nieto
-    def create_suppresion_file(self,suppresion_file_path):
-        self.stdout.write("No xss suppresion file found.\n")
-        self.stdout.write("Created a suppresion file in manage.py directory.\n")
-        file_obj = open(suppresion_file_path,"w")
+    def create_suppression_file(self,suppression_file_path):
+        self.stdout.write("No xss suppression file found.\n")
+        self.stdout.write("Created a suppression file in manage.py directory.\n")
+        file_obj = open(suppression_file_path,"w")
         file_obj.write("This file is used to tell Django to ignore XSS warnings it picks up when the runserver command on manage.py is invoked.\n")
         file_obj.write("Format: <template_name>,<line_num>\n#Example: django.html,50\n")
         file_obj.write("Add your suppressions below:\n")
@@ -134,19 +134,19 @@ class Command(BaseCommand):
         file_obj.write("==========================================================================================\n")
         file_obj.close()
 
-    def check_suppresion_file_exists(self,suppresion_file_path):
-        return os.path.exists(suppresion_file_path)
+    def check_suppression_file_exists(self,suppression_file_path):
+        return os.path.exists(suppression_file_path)
 
     def check_rule_file_exists(self,rule_file_path):
         return os.path.exists(rule_file_path)
 
-    def check_xss_vulnerabilities(self, xss_warnings_are_silenced,suppresion_path,rule_path):
+    def check_xss_vulnerabilities(self, xss_warnings_are_silenced,suppression_path,rule_path):
         engine_obj = engine_loader._engine_list()[0]
         template_loader = template_dir_loader.Loader(engine_obj)
         template_directories = template_loader.get_dirs()
         user_template_directory = template_directories[0]
         template_paths = glob.glob(os.path.join(user_template_directory,"*.html"))
-        xssdetector = XSSDetector(template_paths,suppresion_path,rule_path)
+        xssdetector = XSSDetector(template_paths,suppression_path,rule_path)
         xssdetector.check()
         num_errors = xssdetector.get_num_errors()
         messages = xssdetector.get_error_messages()
@@ -185,15 +185,15 @@ class Command(BaseCommand):
         self.stdout.write("Performing system checks...\n")
         #=======================================================================
         # Added by Adam Nieto
-        # Gathering xss suppresion file path
+        # Gathering xss suppression file path
         user_current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
-        suppresion_file_path = os.path.join(user_current_directory,
-                                             "xss_detector_suppresions.txt")
+        suppression_file_path = os.path.join(user_current_directory,
+                                             "xss_detector_suppressions.txt")
         rule_file_path = os.path.join(user_current_directory,
                                              "additional_xss_detector_rules.txt")
-        # Checking if xss suppresion file should be created
-        if not self.check_suppresion_file_exists(suppresion_file_path):
-            self.create_suppresion_file(suppresion_file_path)
+        # Checking if xss suppression file should be created
+        if not self.check_suppression_file_exists(suppression_file_path):
+            self.create_suppression_file(suppression_file_path)
         # Checking if xss rule file should be created
         if not self.check_rule_file_exists(rule_file_path):
             self.create_rule_file(rule_file_path)
@@ -201,7 +201,7 @@ class Command(BaseCommand):
         self.stdout.write("Performing xss vulnerability checks...\n\n")
         xss_warnings_are_silenced = options["silence_xss_warnings"]
         self.check_xss_vulnerabilities(xss_warnings_are_silenced,
-                                       suppresion_file_path,rule_file_path)
+                                       suppression_file_path,rule_file_path)
         #=======================================================================
         self.check(display_num_errors=True)
         # Need to check migrations here, so can't use the

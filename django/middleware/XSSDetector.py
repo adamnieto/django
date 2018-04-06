@@ -9,7 +9,7 @@ class XSSDetector:
     line_num = 0
     error_counter = 0
     # Dictionary for lines that are suppressed
-    suppresions = {} # key:"template_name,line_num"; value: True
+    suppressions = {} # key:"template_name,line_num"; value: True
     error_message = ""
     vulnerabilities = ["{%autoescapeoff%}",
                        "{%endautoescape%}",
@@ -30,9 +30,9 @@ class XSSDetector:
     "the safeseq filter was used (autoescape is off).",
     "the safe filter was applied to a striptags filter (unsafe)."]
 
-    def __init__(self, template_paths,suppresion_path,rule_path):
+    def __init__(self, template_paths,suppression_path,rule_path):
         self.template_paths = template_paths
-        self.add_suppresions(suppresion_path)
+        self.add_suppressions(suppression_path)
         self.add_rules(rule_path)
 
     def get_error_messages(self):
@@ -60,18 +60,18 @@ class XSSDetector:
                 self.make_arrow(index)
         return result
 
-    def add_suppresions(self,suppresion_path):
-        suppresion_file = open(suppresion_path, "r")
+    def add_suppressions(self,suppression_path):
+        suppression_file = open(suppression_path, "r")
         counter = 0
-        for line in suppresion_file:
+        for line in suppression_file:
             counter += 1
             if counter > 5:
                 key = line.strip()
-                self.suppresions[key] = True
+                self.suppressions[key] = True
 
     def is_suppressed(self):
         key = self.template_name + "," + str(self.line_num)
-        if self.suppresions.get(key,-1) != -1:
+        if self.suppressions.get(key,-1) != -1:
             return True
         else:
             return False
@@ -79,7 +79,7 @@ class XSSDetector:
     def check_vulnerabilities(self, line):
         for i in range(len(self.vulnerabilities)):
             if self.vulnerabilities[i] in line.replace(" ", ""):
-                # Check if in suppresions
+                # Check if in suppressions
                 if not self.is_suppressed():
                     self.error_counter += 1
                     index = line.lstrip().find(self.vulnerabilities[i])
