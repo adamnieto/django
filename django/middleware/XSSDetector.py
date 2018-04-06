@@ -1,10 +1,11 @@
 # ==============================================================================
 # Created By Adam Nieto 2018
-import os
+import os,sys
 
 class XSSDetector:
     template_name = ""
     template_obj = None
+    template_paths = []
     line_num = 0
     error_counter = 0
     # Dictionary for lines that are suppressed
@@ -29,12 +30,10 @@ class XSSDetector:
     "the safeseq filter was used (autoescape is off).",
     "the safe filter was applied to a striptags filter (unsafe)."]
 
-    def __init__(self, template_paths,suppresion_path):
-        for path in template_paths:
-            self.template_name = os.path.split(path)[-1]
-            self.template_obj = open(path,"r")
-            self.add_suppresions(suppresion_path)
-            self.iterate_lines()
+    def __init__(self, template_paths,suppresion_path,rule_path):
+        self.template_paths = template_paths
+        self.add_suppresions(suppresion_path)
+        self.add_rules(rule_path)
 
     def get_error_messages(self):
         return self.error_message
@@ -70,7 +69,6 @@ class XSSDetector:
                 key = line.strip()
                 self.suppresions[key] = True
 
-
     def is_suppressed(self):
         key = self.template_name + "," + str(self.line_num)
         if self.suppresions.get(key,-1) != -1:
@@ -95,11 +93,26 @@ class XSSDetector:
             self.line_num += 1
             self.check_vulnerabilities(line)
 
-    def add_vulnerable_text(self, vuln_text, description_warning):
-        if vuln_text in self.vulnerabilities:
-            return "That vulnerability was already recorded."
-        else:
-            self.vulnerabilities.append(vuln_text)
-            self.reason_messages.append(description_warning)
-            return "The vulnerability was recorded."
+    def add_rules(self, rule_path):
+        rule_file = open(rule_path, "r")
+        counter = 0
+        for line in rule_file:
+            counter += 1
+            if counter > 5:
+                if ',' not in line:
+                    print("Incorrect Format: No comma in 'xss_rules.txt' on line "
+                          + str(counter) + '.')
+                    os._exit(1)
+                    sys.exit()
+                else:
+                    rules = line.strip().split(',')
+                    self.vulnerabilities.append(rules[0])
+                    self.reason_messages.append(rules[1])
+
+    def check(self):
+        for path in self.template_paths:
+            self.template_name = os.path.split(path)[-1]
+            self.template_obj = open(path,"r")
+            self.iterate_lines()
+
 # ==============================================================================

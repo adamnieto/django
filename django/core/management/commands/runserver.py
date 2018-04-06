@@ -124,16 +124,30 @@ class Command(BaseCommand):
         file_obj.write("==========================================================================================\n")
         file_obj.close()
 
+    def create_rule_file(self,rule_file_path):
+        self.stdout.write("No xss rule file found.\n")
+        self.stdout.write("Created a rule file in manage.py directory.\n")
+        file_obj = open(rule_file_path,"w")
+        file_obj.write("This file is used to tell Django to add an XSS detector rule to the checking process for new filters or text you created that may be vulnerable.\n")
+        file_obj.write("Format: vulnerable_filter_or_text,warning_message\n#Example: |dont_escape,the dont_escape filter was used.\n")
+        file_obj.write("Add your rules below:\n")
+        file_obj.write("==========================================================================================\n")
+        file_obj.close()
+
     def check_suppresion_file_exists(self,suppresion_file_path):
         return os.path.exists(suppresion_file_path)
 
-    def check_xss_vulnerabilities(self, xss_warnings_are_silenced,suppresion_path):
+    def check_rule_file_exists(self,rule_file_path):
+        return os.path.exists(rule_file_path)
+
+    def check_xss_vulnerabilities(self, xss_warnings_are_silenced,suppresion_path,rule_path):
         engine_obj = engine_loader._engine_list()[0]
         template_loader = template_dir_loader.Loader(engine_obj)
         template_directories = template_loader.get_dirs()
         user_template_directory = template_directories[0]
         template_paths = glob.glob(os.path.join(user_template_directory,"*.html"))
-        xssdetector = XSSDetector(template_paths,suppresion_path)
+        xssdetector = XSSDetector(template_paths,suppresion_path,rule_path)
+        xssdetector.check()
         num_errors = xssdetector.get_num_errors()
         messages = xssdetector.get_error_messages()
         if num_errors > 0:
@@ -175,12 +189,19 @@ class Command(BaseCommand):
         user_current_directory = os.path.dirname(os.path.abspath(sys.argv[0]))
         suppresion_file_path = os.path.join(user_current_directory,
                                              "xss_suppresions.txt")
+        rule_file_path = os.path.join(user_current_directory,
+                                             "xss_rules.txt")
         # Checking if xss suppresion file should be created
         if not self.check_suppresion_file_exists(suppresion_file_path):
             self.create_suppresion_file(suppresion_file_path)
+        # Checking if xss rule file should be created
+        if not self.check_rule_file_exists(rule_file_path):
+            self.create_rule_file(rule_file_path)
+
         self.stdout.write("Performing xss vulnerability checks...\n\n")
         xss_warnings_are_silenced = options["silence_xss_warnings"]
-        self.check_xss_vulnerabilities(xss_warnings_are_silenced,suppresion_file_path)
+        self.check_xss_vulnerabilities(xss_warnings_are_silenced,
+                                       suppresion_file_path,rule_file_path)
         #=======================================================================
         self.check(display_num_errors=True)
         # Need to check migrations here, so can't use the
