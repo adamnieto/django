@@ -33,35 +33,35 @@ class XSSDetector:
         for path in template_paths:
             self.template_name = os.path.split(path)[-1]
             self.template_obj = open(path,"r")
-            self.addsuppresions(suppresion_path)
-            self.iterateLines()
+            self.add_suppresions(suppresion_path)
+            self.iterate_lines()
 
-    def getErrorMessages(self):
+    def get_error_messages(self):
         return self.error_message
 
-    def getNumErrors(self):
+    def get_num_errors(self):
         return self.error_counter
 
-    def addErrorMessage(self,message):
+    def add_error_message(self,message):
         if self.error_message == "":
             self.error_message = message
         else:
             self.error_message += message
 
-    def makeArrow(self,index):
+    def make_arrow(self,index):
         result = ""
         for i in range(index):
             result += " "
         return result + "^\n"
 
-    def createMessage(self,error, line, index):
+    def create_message(self,error, line, index):
         result = "WARNING: Your application may be at risk to an XSS attack.\n" + \
                 'In template, "' + self.template_name + '", line ' + \
                 str(self.line_num) + " "  + error + "\n" + line.lstrip() + \
-                self.makeArrow(index)
+                self.make_arrow(index)
         return result
 
-    def addsuppresions(self,suppresion_path):
+    def add_suppresions(self,suppresion_path):
         suppresion_file = open(suppresion_path, "r")
         counter = 0
         for line in suppresion_file:
@@ -71,29 +71,29 @@ class XSSDetector:
                 self.suppresions[key] = True
 
 
-    def isSurpressed(self):
+    def is_suppressed(self):
         key = self.template_name + "," + str(self.line_num)
         if self.suppresions.get(key,-1) != -1:
             return True
         else:
             return False
 
-    def checkVulnerabilities(self, line):
+    def check_vulnerabilities(self, line):
         for i in range(len(self.vulnerabilities)):
             if self.vulnerabilities[i] in line.replace(" ", ""):
                 # Check if in suppresions
-                if not self.isSurpressed():
+                if not self.is_suppressed():
                     self.error_counter += 1
                     index = line.lstrip().find(self.vulnerabilities[i])
-                    message = self.createMessage(self.reason_messages[i],line,index)
-                    self.addErrorMessage(message)
+                    message = self.create_message(self.reason_messages[i],line,index)
+                    self.add_error_message(message)
 
-    def iterateLines(self):
+    def iterate_lines(self):
         self.line_num = 0
         for line in self.template_obj:
             # Determine line number
             self.line_num += 1
-            self.checkVulnerabilities(line)
+            self.check_vulnerabilities(line)
 
     def add_vulnerable_text(self, vuln_text, description_warning):
         if vuln_text in self.vulnerabilities:

@@ -134,8 +134,8 @@ class Command(BaseCommand):
         user_template_directory = template_directories[0]
         template_paths = glob.glob(os.path.join(user_template_directory,"*.html"))
         xssdetector = XSSDetector(template_paths,suppresion_path)
-        num_errors = xssdetector.getNumErrors()
-        messages = xssdetector.getErrorMessages()
+        num_errors = xssdetector.get_num_errors()
+        messages = xssdetector.get_error_messages()
         if num_errors > 0:
             if not xss_warnings_are_silenced:
                 self.stdout.write(str(num_errors) + " potential XSS vulnerabilities were found:\n")
