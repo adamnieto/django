@@ -139,7 +139,6 @@ class Origin(object):
         self.name = name
         self.template_name = template_name
         self.loader = loader
-        print("HELLO")
 
     def __str__(self):
         return self.name
