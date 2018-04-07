@@ -67,7 +67,7 @@ Example:
 ```
 ---
 ## Installation
-To install this package from GitHub simply use one of the following commands with pip:
+To install this package from GitHub simply use one of the following commands:
 ```
 python3 -m pip install git+https://github.com/adamnieto/django-xss-detector
 ```
