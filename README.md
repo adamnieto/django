@@ -69,9 +69,9 @@ Example:
 ## Installation
 To install this package from GitHub simply use one of the following commands with pip:
 ```
-pip install git+https://github.com/adamnieto/django-xss-detector
+python3 -m pip install git+https://github.com/adamnieto/django-xss-detector
 ```
 or 
 ```
-pip install git+git://github.com/adamnieto/django-xss-detector
+python3 -m pip install git+git://github.com/adamnieto/django-xss-detector
 ```
