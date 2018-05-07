@@ -54,7 +54,7 @@ Example:
 home.html,23
 ```
 ### Add New Rules
-A file called `additional_xss_detector_rules.txt` is created in the same directory as `manage.py` the first time the `runserver` command is executed. This file can be used to tell django that you want to add more rules for the xss detector to identify. For instance, if a developer created a new filter or template tag that could potentially be vulnerable to XSS attack then the developer should add this rule to `additional_xss_detector_rules.txt` so they or others who use this filter can be warned if used incorrectly could result in an XSS attack. 
+A file called `additional_xss_detector_rules.txt` is created in the same directory as `manage.py` the first time the `runserver` command is executed. This file can be used to tell django that you want to add more rules for the xss detector to identify. For instance, if a developer created a new filter or template tag that could potentially be vulnerable to XSS attack then the developer should add this rule to `additional_xss_detector_rules.txt` so they or others who use this filter can be warned if used incorrectly. 
 Please use the following format when adding rules (start on the 6th line):
 
 ```
